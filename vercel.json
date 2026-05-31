@@ -1,0 +1,8 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/proposal", "destination": "/" },
+    { "source": "/owner-demo", "destination": "/" }
+  ]
+}
