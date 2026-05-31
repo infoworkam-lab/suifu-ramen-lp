@@ -115,26 +115,31 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function mergeSiteData(base, saved) {
+export function mergeSiteData(base, saved) {
   if (!saved || typeof saved !== "object") return clone(base);
+  const baseData = clone(base);
   return {
-    ...clone(base),
+    ...baseData,
     ...saved,
-    brand: { ...base.brand, ...saved.brand },
-    shopStatus: { ...base.shopStatus, ...saved.shopStatus },
-    crowdStatus: { ...base.crowdStatus, ...saved.crowdStatus },
-    limitedMenu: { ...base.limitedMenu, ...saved.limitedMenu },
-    access: { ...base.access, ...saved.access },
+    brand: { ...baseData.brand, ...(saved.brand || {}) },
+    shopStatus: { ...baseData.shopStatus, ...(saved.shopStatus || saved.status || {}) },
+    crowdStatus: { ...baseData.crowdStatus, ...(saved.crowdStatus || {}) },
+    limitedMenu: { ...baseData.limitedMenu, ...(saved.limitedMenu || {}) },
+    access: { ...baseData.access, ...(saved.access || {}) },
     images: {
-      ...base.images,
-      ...saved.images,
-      gallery: Array.isArray(saved.images?.gallery) ? saved.images.gallery : base.images.gallery
+      ...baseData.images,
+      ...(saved.images || {}),
+      gallery: Array.isArray(saved.images?.gallery) ? saved.images.gallery : baseData.images.gallery
     },
-    mediaLabels: { ...base.mediaLabels, ...saved.mediaLabels },
-    news: Array.isArray(saved.news) ? saved.news : base.news,
-    lineActions: Array.isArray(saved.lineActions) ? saved.lineActions : base.lineActions,
-    lineMessages: Array.isArray(saved.lineMessages) ? saved.lineMessages : base.lineMessages
+    mediaLabels: { ...baseData.mediaLabels, ...(saved.mediaLabels || {}) },
+    news: Array.isArray(saved.news) ? saved.news : baseData.news,
+    lineActions: Array.isArray(saved.lineActions) ? saved.lineActions : baseData.lineActions,
+    lineMessages: Array.isArray(saved.lineMessages) ? saved.lineMessages : baseData.lineMessages
   };
+}
+
+export function normalizeSiteData(data) {
+  return mergeSiteData(defaultSiteData, data);
 }
 
 export function getNowLabel(date = new Date()) {
@@ -142,10 +147,11 @@ export function getNowLabel(date = new Date()) {
 }
 
 function withUpdatedAt(data) {
+  const safeData = normalizeSiteData(data);
   return {
-    ...data,
+    ...safeData,
     shopStatus: {
-      ...data.shopStatus,
+      ...safeData.shopStatus,
       updatedAt: getNowLabel()
     }
   };
@@ -169,7 +175,7 @@ export async function resetSiteData() {
 }
 
 export function updateSiteData(setSiteData, updater) {
-  setSiteData((current) => (typeof updater === "function" ? updater(current) : mergeSiteData(current, updater)));
+  setSiteData((current) => normalizeSiteData(typeof updater === "function" ? updater(normalizeSiteData(current)) : updater));
 }
 
 export const localStorageProvider = {
@@ -177,19 +183,16 @@ export const localStorageProvider = {
     if (typeof window === "undefined") return clone(defaultSiteData);
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
-      return saved ? mergeSiteData(defaultSiteData, JSON.parse(saved)) : clone(defaultSiteData);
+      return saved ? normalizeSiteData(JSON.parse(saved)) : clone(defaultSiteData);
     } catch (error) {
       console.error("localStorage load failed:", error);
       return clone(defaultSiteData);
     }
   },
   backup(data) {
-    if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    return data;
-  },
-  save(data) {
-    const dataWithTimestamp = withUpdatedAt(data);
-    return this.backup(dataWithTimestamp);
+    const safeData = normalizeSiteData(data);
+    if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, JSON.stringify(safeData));
+    return safeData;
   },
   reset() {
     if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY);
@@ -205,27 +208,30 @@ export const supabaseProvider = {
     if (!this.available) throw new Error("Supabase環境変数未設定");
     const { data, error } = await supabase
       .from("stores")
-      .select("site_data")
+      .select("*")
       .eq("slug", STORE_SLUG)
-      .maybeSingle();
+      .single();
+
+    console.log("SUPABASE RESPONSE", data);
+    console.log("SUPABASE ERROR", error);
 
     if (error) throw error;
-    return data?.site_data ? mergeSiteData(defaultSiteData, data.site_data) : clone(defaultSiteData);
+    if (!data || !data.site_data) return clone(defaultSiteData);
+    return normalizeSiteData(data.site_data);
   },
   async saveAsync(data) {
     if (!this.available) throw new Error("Supabase環境変数未設定");
     const dataWithTimestamp = withUpdatedAt(data);
     const updatedAt = new Date().toISOString();
-    const payload = {
-      name: dataWithTimestamp.brand?.shortName || dataWithTimestamp.brand?.name || "Suifu",
-      site_data: dataWithTimestamp,
-      updated_at: updatedAt
-    };
 
     console.log("SUPABASE UPDATE", STORE_SLUG);
     const { data: savedRows, error } = await supabase
       .from("stores")
-      .update(payload)
+      .update({
+        name: dataWithTimestamp.brand?.shortName || dataWithTimestamp.brand?.name || "Suifu",
+        site_data: dataWithTimestamp,
+        updated_at: updatedAt
+      })
       .eq("slug", STORE_SLUG)
       .select("site_data, updated_at");
 
@@ -234,7 +240,7 @@ export const supabaseProvider = {
       throw new Error(`stores.slug = "${STORE_SLUG}" の行が見つからないため更新できません。seed.sqlを実行してください。`);
     }
 
-    return mergeSiteData(defaultSiteData, savedRows[0].site_data || dataWithTimestamp);
+    return normalizeSiteData(savedRows[0].site_data || dataWithTimestamp);
   },
   async resetAsync() {
     return this.saveAsync(clone(defaultSiteData));
@@ -259,8 +265,8 @@ export const dataProvider = {
       localStorageProvider.backup(data);
       return { data, source: "supabase", error: null, configMissing: false };
     } catch (error) {
-      console.error("Supabase load failed:", error);
-      return { data: localStorageProvider.load(), source: "localStorage", error, configMissing: false };
+      console.error("Supabase load failed:", JSON.stringify(error));
+      return { data: clone(defaultSiteData), source: "localStorage", error, configMissing: false };
     }
   },
   async saveAsync(data) {

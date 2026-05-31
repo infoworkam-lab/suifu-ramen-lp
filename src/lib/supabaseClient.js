@@ -11,6 +11,19 @@ export const isSupabaseConfigured = Boolean(
     !supabaseAnonKey.includes("your-anon-key")
 );
 
+const supabaseFetch = async (input, init) => {
+  const response = await fetch(input, init);
+  if (!response.ok) {
+    const url = typeof input === "string" ? input : input?.url;
+    console.error("SUPABASE HTTP ERROR", response.status, url);
+  }
+  return response;
+};
+
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        fetch: supabaseFetch
+      }
+    })
   : null;
