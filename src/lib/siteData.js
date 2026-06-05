@@ -143,6 +143,9 @@ export const supabaseProvider = {
       .eq("slug", STORE_SLUG)
       .select("site_data, updated_at");
 
+    console.log("SUPABASE SAVE RESPONSE", savedRows);
+    console.log("SUPABASE SAVE ERROR", error);
+
     if (error) throw error;
     if (!savedRows || savedRows.length === 0) {
       throw new Error(`stores.slug = "${STORE_SLUG}" の行が見つからないため更新できません。seed.sqlを実行してください。`);
