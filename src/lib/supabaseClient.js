@@ -1,8 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
 const env = import.meta.env ?? {};
-const supabaseUrl = env.VITE_SUPABASE_URL;
+const rawSupabaseUrl = env.VITE_SUPABASE_URL;
 const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
+
+function normalizeSupabaseUrl(url) {
+  if (!url) return "";
+  return url
+    .trim()
+    .replace(/\/rest\/v1\/?$/i, "")
+    .replace(/\/+$/g, "");
+}
+
+const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
@@ -12,9 +22,10 @@ export const isSupabaseConfigured = Boolean(
 );
 
 const supabaseFetch = async (input, init) => {
+  const url = typeof input === "string" ? input : input?.url;
+  console.log("SUPABASE REQUEST", init?.method || "GET", url);
   const response = await fetch(input, init);
   if (!response.ok) {
-    const url = typeof input === "string" ? input : input?.url;
     console.error("SUPABASE HTTP ERROR", response.status, url);
   }
   return response;
