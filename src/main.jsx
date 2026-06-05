@@ -255,7 +255,7 @@ function CrowdStatus({ data }) {
     <section id="crowd" className="mx-auto max-w-6xl px-4 py-10 md:px-6">
       <SectionTitle label="LIVE STATUS" title="来店前に、席の空気を確認。" />
       <div className="mt-5 grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
-        <div className="reveal rounded-[24px] bg-white/85 p-5 shadow-card">
+        <div className="reveal rounded-[24px] bg-white/82 p-5 shadow-card">
           <Info label="ただいま" value={crowd.current} dark />
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Info label="カウンター" value={`残り${crowd.counterSeats}席`} dark />
@@ -263,7 +263,7 @@ function CrowdStatus({ data }) {
           </div>
           <p className="mt-4 text-sm font-bold leading-relaxed text-suifu-muted">{crowd.updateNote}</p>
         </div>
-        <div className="reveal rounded-[24px] bg-white/85 p-5 shadow-card">
+        <div className="reveal rounded-[24px] bg-white/82 p-5 shadow-card">
           <div className="grid gap-3">
             {data.crowdStatus.slots.map((slot) => (
               <div key={slot.time} className="grid grid-cols-[64px_1fr_86px] items-center gap-3 text-sm font-black">
@@ -282,19 +282,19 @@ function CrowdStatus({ data }) {
 }
 
 function News({ data }) {
-  const publishedNews = data.news.filter((item) => item.status !== "下書き");
+  const publishedNews = data.news.filter((item) => item.status !== "下書き").slice(0, 3);
   return (
     <section id="news" className="mx-auto max-w-6xl px-4 py-10 md:px-6">
       <SectionTitle label="NEWS" title="本日のお知らせ" />
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
+      <div className="mt-5 grid gap-3">
         {publishedNews.map((item) => (
-          <article key={`${item.date}-${item.title}`} className="reveal rounded-[22px] bg-white/85 p-5 shadow-card">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="rounded-full bg-suifu-bamboo px-3 py-1 text-xs font-black text-suifu-primary">{item.tag}</span>
-              <span className="text-xs font-bold text-suifu-muted">{item.date}</span>
+          <article key={`${item.date}-${item.title}`} className="reveal rounded-[22px] border border-suifu-primary/10 bg-white/82 p-5 shadow-insetLine">
+            <div className="flex flex-wrap items-center gap-3 text-xs font-black text-suifu-primary">
+              <span>{item.tag}</span>
+              <span>{item.date}</span>
             </div>
-            <h3 className="font-serif text-xl font-black">{item.title}</h3>
-            <p className="mt-3 text-sm font-bold leading-relaxed text-suifu-muted">{item.text}</p>
+            <h3 className="mt-2 font-serif text-2xl font-black">{item.title}</h3>
+            <p className="mt-2 text-sm font-bold leading-relaxed text-suifu-muted">{item.text}</p>
           </article>
         ))}
       </div>
@@ -368,9 +368,7 @@ function Movie() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 md:px-6">
       <SectionTitle label="MOVIE" title="湯気まで伝わる、初夏の一杯。" />
-      <div className="reveal craft-card steam-pot mt-5">
-        <video src={movieA} poster={heroImage} className="relative z-10 aspect-video w-full object-cover" controls playsInline preload="metadata" />
-      </div>
+      <video src={movieA} poster={heroImage} className="reveal mt-5 aspect-video w-full rounded-[28px] object-cover shadow-soft" controls playsInline preload="metadata" />
     </section>
   );
 }
@@ -385,8 +383,8 @@ function Gallery({ data }) {
     <section className="mx-auto max-w-6xl px-4 py-12 md:px-6">
       <SectionTitle label="SHOP" title="落ち着いて過ごせる店内。" />
       <div className="mt-5 grid gap-4 md:grid-cols-3">
-        {items.map(([src, fallback, title], index) => (
-          <article key={title} className={`reveal insta-scene scene-${index} overflow-hidden rounded-[24px] bg-white shadow-card`}>
+        {items.map(([src, fallback, title]) => (
+          <article key={title} className="reveal overflow-hidden rounded-[24px] bg-white shadow-card">
             <SafeImage src={src} fallback={fallback} alt={title} className="aspect-[4/3] w-full object-cover" />
             <h3 className="p-4 font-serif text-2xl font-black">{title}</h3>
           </article>
