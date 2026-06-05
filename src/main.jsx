@@ -157,7 +157,7 @@ function App() {
 function PublicLp({ siteData }) {
   const data = safeData(siteData);
   return (
-    <div className="min-h-screen overflow-x-hidden text-suifu-ink" style={themeStyle}>
+    <div className="min-h-screen overflow-x-hidden bg-suifu-paper text-suifu-ink" style={themeStyle}>
       <AmbientLayer />
       <Header data={data} />
       <main>
@@ -180,7 +180,8 @@ function PublicLp({ siteData }) {
 
 function Header({ data }) {
   return (
-    <header className="relative z-30 mx-auto flex max-w-6xl items-center justify-between px-4 py-5 md:px-6">
+    <header className="sticky top-0 z-30 border-b border-suifu-primary/10 bg-suifu-paper/86 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6 md:py-5">
       <a href="/" className="flex items-center gap-3">
         <span className="grid h-12 w-12 place-items-center rounded-full bg-suifu-primary font-serif text-2xl font-black text-white">翠</span>
         <span>
@@ -202,19 +203,21 @@ function Header({ data }) {
           </a>
         ))}
       </nav>
+      </div>
     </header>
   );
 }
 
 function Hero({ data }) {
   return (
-    <section id="top" className="relative mx-auto grid max-w-6xl gap-6 px-4 pb-10 pt-2 md:grid-cols-[0.92fr_1.08fr] md:px-6 md:pb-16">
+    <section id="top" className="relative mx-auto grid max-w-6xl gap-6 px-4 pb-9 pt-6 md:grid-cols-[0.92fr_1.08fr] md:px-6 md:pb-16 md:pt-8">
+      <div className="absolute inset-x-4 top-0 -z-0 h-[72%] rounded-[32px] bg-white/44 shadow-insetLine md:inset-x-6" />
       <div className="reveal flex flex-col justify-center">
         <span className="eyebrow text-suifu-primary">淡麗塩 / 期間限定</span>
-        <h1 className="mt-4 font-serif text-5xl font-black leading-[1.04] md:text-7xl">
+        <h1 className="mt-4 font-serif text-[3.25rem] font-black leading-[1.02] md:text-7xl">
           柚子薫る、<br />澄みわたる<br />塩らぁ麺。
         </h1>
-        <p className="mt-5 max-w-xl text-base font-bold leading-[1.9] text-suifu-muted">
+        <p className="mt-5 max-w-xl text-[15px] font-bold leading-[1.95] text-suifu-muted md:text-base">
           鶏の旨みを引き出した澄んだスープに、国産柚子の香りを重ねました。軽やかで、最後まで飲み干したくなる季節の一杯です。
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
@@ -230,6 +233,13 @@ function Hero({ data }) {
           <span className="text-sm font-black text-suifu-accent">残り{data.limitedMenu.remaining}杯</span>
         </div>
       </div>
+      <div className="reveal col-span-full grid gap-3 rounded-[24px] border border-suifu-primary/10 bg-white/76 p-3 shadow-card md:hidden">
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <MiniStatus label="営業" value={data.shopStatus.state} />
+          <MiniStatus label="L.O." value={data.shopStatus.lastOrder} />
+          <MiniStatus label="限定" value={`${data.limitedMenu.remaining}杯`} />
+        </div>
+      </div>
     </section>
   );
 }
@@ -237,7 +247,7 @@ function Hero({ data }) {
 function TodayStatus({ data }) {
   const status = data.shopStatus;
   return (
-    <section id="today" className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+    <section id="today" className="mx-auto max-w-6xl px-4 py-5 md:px-6">
       <div className="reveal grid gap-4 rounded-[28px] bg-suifu-primary p-5 text-white shadow-soft md:grid-cols-4 md:p-6">
         <Info label="本日の営業" value={status.state} />
         <Info label="営業時間" value={`${status.open}〜${status.close}`} />
@@ -299,6 +309,15 @@ function News({ data }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function MiniStatus({ label, value }) {
+  return (
+    <div className="rounded-2xl bg-suifu-paper px-2 py-3">
+      <span className="block text-[10px] font-black text-suifu-muted">{label}</span>
+      <strong className="mt-1 block text-sm font-black text-suifu-primary">{value}</strong>
+    </div>
   );
 }
 
