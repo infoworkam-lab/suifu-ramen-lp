@@ -14,7 +14,7 @@ function asArray(value, fallback) {
 }
 
 function hasCorruptText(value) {
-  if (typeof value === "string") return /繧|縺|鄙|鬚|鮗|螟|蜀|譟|蟶|逕|陦/.test(value);
+  if (typeof value === "string") return /繧|縺|鄙|鬚|鮗|螟|蜀|譟|蟶|逕|陦|郢|邵|驗/.test(value);
   if (Array.isArray(value)) return value.some(hasCorruptText);
   if (value && typeof value === "object") return Object.values(value).some(hasCorruptText);
   return false;
@@ -26,6 +26,7 @@ export function mergeSiteData(base, saved) {
     console.warn("siteData contains mojibake; fallback data will be used.");
     return clone(base);
   }
+
   const baseData = clone(base);
   const savedImages = saved.images && typeof saved.images === "object" ? saved.images : {};
 
@@ -70,6 +71,12 @@ function withUpdatedAt(data) {
       updatedAt: getNowLabel()
     }
   };
+}
+
+function errorMessage(error) {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+  return error.message || JSON.stringify(error);
 }
 
 export const localStorageProvider = {
@@ -153,12 +160,9 @@ export const futureSupabaseProvider = supabaseProvider;
 export const dataProvider = {
   async loadAsync() {
     if (!isSupabaseConfigured) {
-      return {
-        data: localStorageProvider.load(),
-        source: "localStorage",
-        error: new Error("Supabase環境変数未設定"),
-        configMissing: true
-      };
+      const error = new Error("Supabase環境変数未設定");
+      console.error("Supabase load skipped:", error.message);
+      return { data: clone(defaultSiteData), source: "fallback", error, configMissing: true };
     }
 
     try {
@@ -166,9 +170,8 @@ export const dataProvider = {
       localStorageProvider.backup(data);
       return { data, source: "supabase", error: null, configMissing: false };
     } catch (error) {
-      console.error("Supabase load failed:", JSON.stringify(error));
-      const fallbackData = normalizeSiteData(localStorageProvider.load());
-      return { data: fallbackData, source: "localStorage", error, configMissing: false };
+      console.error("Supabase load failed:", errorMessage(error));
+      return { data: clone(defaultSiteData), source: "fallback", error, configMissing: false };
     }
   },
   async saveAsync(data) {
@@ -177,7 +180,7 @@ export const dataProvider = {
 
     if (!isSupabaseConfigured) {
       const error = new Error("Supabase環境変数未設定");
-      console.error("Supabase save failed:", error);
+      console.error("Supabase save failed:", error.message);
       localStorageProvider.backup(dataWithTimestamp);
       return { data: dataWithTimestamp, source: "localStorage", error, configMissing: true };
     }
@@ -188,7 +191,7 @@ export const dataProvider = {
       console.log("SAVE SUCCESS");
       return { data: savedData, source: "supabase", error: null, configMissing: false };
     } catch (error) {
-      console.error("Supabase save failed:", error);
+      console.error("Supabase save failed:", errorMessage(error));
       localStorageProvider.backup(dataWithTimestamp);
       return { data: dataWithTimestamp, source: "localStorage", error, configMissing: false };
     }
@@ -198,7 +201,7 @@ export const dataProvider = {
 
     if (!isSupabaseConfigured) {
       const error = new Error("Supabase環境変数未設定");
-      console.error("Supabase reset failed:", error);
+      console.error("Supabase reset failed:", error.message);
       localStorageProvider.backup(resetData);
       return { data: resetData, source: "localStorage", error, configMissing: true };
     }
@@ -208,7 +211,7 @@ export const dataProvider = {
       localStorageProvider.backup(savedData);
       return { data: savedData, source: "supabase", error: null, configMissing: false };
     } catch (error) {
-      console.error("Supabase reset failed:", error);
+      console.error("Supabase reset failed:", errorMessage(error));
       localStorageProvider.backup(resetData);
       return { data: resetData, source: "localStorage", error, configMissing: false };
     }
@@ -216,7 +219,7 @@ export const dataProvider = {
 };
 
 export function loadInitialSiteData() {
-  return localStorageProvider.load();
+  return clone(defaultSiteData);
 }
 
 export async function loadSiteData() {
