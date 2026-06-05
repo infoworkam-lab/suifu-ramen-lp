@@ -85,6 +85,7 @@ function imageFor(siteData, key) {
   const images = safeData(siteData).images;
   const value = images?.[key];
   const fallback = Array.isArray(fallbackImages[key]) ? fallbackImages[key][0] : fallbackImages[key];
+  if (key === "hero") return fallback || heroImage;
   const normalizeImageValue = (imageValue) => {
     if (typeof imageValue !== "string") return "";
     const trimmed = imageValue.trim();
