@@ -29,6 +29,7 @@ import {
 import { isSupabaseConfigured } from "./lib/supabaseClient.js";
 
 import heroImage from "../assets/works_ramen_cm_05_thumb.png";
+import heroFastImage from "../assets/suifu_hero_fast.webp";
 import movieA from "../assets/works_ramen_cm_05.mp4";
 import menuFull from "../assets/suifu_menu_full.png";
 import yuzuLimited from "../assets/suifu_yuzu_limited.png";
@@ -53,7 +54,7 @@ const themeStyle = {
 };
 
 const fallbackImages = {
-  hero: heroImage,
+  hero: heroFastImage,
   limitedMenu: yuzuLimited,
   menu: menuFull,
   exterior: shopSign,
