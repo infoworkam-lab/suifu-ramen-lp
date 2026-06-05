@@ -84,8 +84,17 @@ function safeData(data) {
 function imageFor(siteData, key) {
   const images = safeData(siteData).images;
   const value = images?.[key];
-  if (Array.isArray(value)) return value[0] || fallbackImages[key]?.[0] || heroImage;
-  return value || fallbackImages[key] || heroImage;
+  const fallback = Array.isArray(fallbackImages[key]) ? fallbackImages[key][0] : fallbackImages[key];
+  const normalizeImageValue = (imageValue) => {
+    if (typeof imageValue !== "string") return "";
+    const trimmed = imageValue.trim();
+    if (!trimmed || trimmed.startsWith("blob:")) return "";
+    return trimmed;
+  };
+  if (Array.isArray(value)) {
+    return normalizeImageValue(value[0]) || fallback || heroImage;
+  }
+  return normalizeImageValue(value) || fallback || heroImage;
 }
 
 function SafeImage({ src, fallback = heroImage, alt, className }) {
@@ -157,7 +166,7 @@ function App() {
 function PublicLp({ siteData }) {
   const data = safeData(siteData);
   return (
-    <div className="min-h-screen overflow-x-hidden bg-suifu-paper text-suifu-ink" style={themeStyle}>
+    <div className="min-h-screen overflow-x-hidden bg-suifu-paper text-suifu-ink antialiased" style={themeStyle}>
       <AmbientLayer />
       <Header data={data} />
       <main>
@@ -180,10 +189,10 @@ function PublicLp({ siteData }) {
 
 function Header({ data }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-suifu-primary/10 bg-suifu-paper/86 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-suifu-primary/10 bg-suifu-paper/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6 md:py-5">
-      <a href="/" className="flex items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-full bg-suifu-primary font-serif text-2xl font-black text-white">翠</span>
+      <a href="/" className="flex items-center gap-3" aria-label={`${data.brand.name} トップへ`}>
+        <span className="grid h-12 w-12 place-items-center rounded-full bg-suifu-primary font-serif text-2xl font-black text-white shadow-card">翠</span>
         <span>
           <span className="block text-[10px] font-bold tracking-[0.18em] text-suifu-muted">{data.brand.kana}</span>
           <strong className="block font-serif text-3xl leading-none">{data.brand.shortName}</strong>
@@ -210,30 +219,36 @@ function Header({ data }) {
 
 function Hero({ data }) {
   return (
-    <section id="top" className="relative mx-auto grid max-w-6xl gap-6 px-4 pb-9 pt-6 md:grid-cols-[0.92fr_1.08fr] md:px-6 md:pb-16 md:pt-8">
-      <div className="absolute inset-x-4 top-0 -z-0 h-[72%] rounded-[32px] bg-white/44 shadow-insetLine md:inset-x-6" />
-      <div className="reveal flex flex-col justify-center">
-        <span className="eyebrow text-suifu-primary">淡麗塩 / 期間限定</span>
-        <h1 className="mt-4 font-serif text-[3.25rem] font-black leading-[1.02] md:text-7xl">
+    <section id="top" className="relative mx-auto grid max-w-6xl gap-5 px-4 pb-8 pt-5 md:min-h-[760px] md:grid-cols-[0.86fr_1.14fr] md:items-center md:px-6 md:pb-16 md:pt-10">
+      <div className="absolute inset-x-4 top-0 -z-0 h-[80%] rounded-[30px] border border-suifu-primary/10 bg-white/40 shadow-insetLine md:inset-x-6 md:h-[78%] md:rounded-[36px]" />
+      <div className="reveal relative z-10 flex flex-col justify-center md:pr-2">
+        <span className="eyebrow text-suifu-primary">淡麗塩 / 季節限定</span>
+        <h1 className="mt-3 font-serif text-[3rem] font-black leading-[1.02] md:mt-4 md:text-7xl">
           柚子薫る、<br />澄みわたる<br />塩らぁ麺。
         </h1>
-        <p className="mt-5 max-w-xl text-[15px] font-bold leading-[1.95] text-suifu-muted md:text-base">
+        <p className="mt-4 max-w-xl text-sm font-bold leading-[1.95] text-suifu-muted md:mt-5 md:text-base">
           鶏の旨みを引き出した澄んだスープに、国産柚子の香りを重ねました。軽やかで、最後まで飲み干したくなる季節の一杯です。
         </p>
-        <div className="mt-7 flex flex-wrap gap-3">
-          <a href="#menu" className="rounded-full bg-suifu-primary px-6 py-3 text-sm font-black text-white">お品書き</a>
-          <a href="#access" className="rounded-full border border-suifu-primary/20 bg-white/70 px-6 py-3 text-sm font-black text-suifu-primary">アクセス</a>
+        <div className="mt-6 flex flex-wrap gap-3 md:mt-7">
+          <a href="#line" className="rounded-full bg-suifu-primary px-6 py-3 text-sm font-black text-white shadow-card">LINEで席確認</a>
+          <a href="#menu" className="rounded-full border border-suifu-primary/20 bg-white/82 px-6 py-3 text-sm font-black text-suifu-primary shadow-insetLine">お品書き</a>
         </div>
       </div>
-      <div className="reveal relative">
-        <SafeImage src={imageFor(data, "hero")} alt={`${data.brand.name}のらぁ麺`} className="aspect-square w-full rounded-[28px] object-cover shadow-soft" />
-        <div className="absolute bottom-4 left-4 rounded-2xl bg-white/90 p-4 shadow-card backdrop-blur">
-          <span className="text-xs font-black text-suifu-primary">{data.limitedMenu.status}</span>
-          <strong className="block font-serif text-2xl">{data.limitedMenu.name}</strong>
-          <span className="text-sm font-black text-suifu-accent">残り{data.limitedMenu.remaining}杯</span>
+      <div className="reveal relative z-10 md:pl-2">
+        <div className="relative overflow-hidden rounded-[30px] bg-white shadow-soft md:rounded-[36px]">
+          <SafeImage src={imageFor(data, "hero")} fallback={heroImage} alt={`${data.brand.name}のらぁ麺`} className="aspect-square w-full object-cover" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-suifu-night/24 via-transparent to-white/6" />
+          <div className="steam steam-a" />
+          <div className="steam steam-b" />
+          <div className="steam steam-c" />
+          <div className="absolute bottom-3 left-3 right-3 rounded-[22px] bg-white/92 p-4 shadow-card backdrop-blur md:bottom-5 md:left-5 md:right-auto md:min-w-[240px] md:p-5">
+            <span className="text-xs font-black text-suifu-primary">{data.limitedMenu.status}</span>
+            <strong className="mt-1 block font-serif text-2xl md:text-3xl">{data.limitedMenu.name}</strong>
+            <span className="mt-1 block text-sm font-black text-suifu-accent">本日残り{data.limitedMenu.remaining}杯</span>
+          </div>
         </div>
       </div>
-      <div className="reveal col-span-full grid gap-3 rounded-[24px] border border-suifu-primary/10 bg-white/76 p-3 shadow-card md:hidden">
+      <div className="reveal col-span-full grid gap-3 rounded-[24px] border border-suifu-primary/10 bg-white/82 p-3 shadow-card md:hidden">
         <div className="grid grid-cols-3 gap-2 text-center">
           <MiniStatus label="営業" value={data.shopStatus.state} />
           <MiniStatus label="L.O." value={data.shopStatus.lastOrder} />
@@ -248,7 +263,7 @@ function TodayStatus({ data }) {
   const status = data.shopStatus;
   return (
     <section id="today" className="mx-auto max-w-6xl px-4 py-5 md:px-6">
-      <div className="reveal grid gap-4 rounded-[28px] bg-suifu-primary p-5 text-white shadow-soft md:grid-cols-4 md:p-6">
+      <div className="reveal grid gap-4 rounded-[28px] bg-suifu-primary p-5 text-white shadow-soft md:grid-cols-4 md:p-7">
         <Info label="本日の営業" value={status.state} />
         <Info label="営業時間" value={`${status.open}〜${status.close}`} />
         <Info label="ラストオーダー" value={status.lastOrder} />
@@ -262,10 +277,10 @@ function TodayStatus({ data }) {
 function CrowdStatus({ data }) {
   const crowd = data.crowdStatus;
   return (
-    <section id="crowd" className="mx-auto max-w-6xl px-4 py-10 md:px-6">
+    <section id="crowd" className="mx-auto max-w-6xl px-4 py-10 md:px-6 md:py-12">
       <SectionTitle label="LIVE STATUS" title="来店前に、席の空気を確認。" />
       <div className="mt-5 grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
-        <div className="reveal rounded-[24px] bg-white/82 p-5 shadow-card">
+        <div className="reveal rounded-[24px] border border-suifu-primary/10 bg-white/84 p-5 shadow-card">
           <Info label="ただいま" value={crowd.current} dark />
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Info label="カウンター" value={`残り${crowd.counterSeats}席`} dark />
@@ -273,7 +288,7 @@ function CrowdStatus({ data }) {
           </div>
           <p className="mt-4 text-sm font-bold leading-relaxed text-suifu-muted">{crowd.updateNote}</p>
         </div>
-        <div className="reveal rounded-[24px] bg-white/82 p-5 shadow-card">
+        <div className="reveal rounded-[24px] border border-suifu-primary/10 bg-white/84 p-5 shadow-card">
           <div className="grid gap-3">
             {data.crowdStatus.slots.map((slot) => (
               <div key={slot.time} className="grid grid-cols-[64px_1fr_86px] items-center gap-3 text-sm font-black">
@@ -323,8 +338,8 @@ function MiniStatus({ label, value }) {
 
 function Concept({ data }) {
   return (
-    <section id="concept" className="mx-auto grid max-w-6xl gap-6 px-4 py-12 md:grid-cols-2 md:px-6">
-      <div className="reveal">
+    <section id="concept" className="mx-auto grid max-w-6xl gap-6 px-4 py-12 md:grid-cols-[0.9fr_1.1fr] md:items-center md:px-6 md:py-16">
+      <div className="reveal rounded-[28px] bg-white/64 p-5 shadow-insetLine md:p-8">
         <SectionTitle label="CONCEPT" title="澄みきった一杯を、毎日の食事に。" />
         <p className="mt-5 text-base font-bold leading-[2] text-suifu-muted">
           余計な重さを残さず、出汁の旨みと香りで満たす淡麗塩。昼にも夜にも食べたくなる、静かで記憶に残るらぁ麺を目指しています。
@@ -339,9 +354,9 @@ function LimitedMenu({ data }) {
   const item = data.limitedMenu;
   if (!item.visible) return null;
   return (
-    <section className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-      <div className="reveal grid overflow-hidden rounded-[30px] bg-suifu-primary text-white shadow-soft md:grid-cols-2">
-        <SafeImage src={imageFor(data, "limitedMenu")} fallback={yuzuLimited} alt={item.name} className="h-full min-h-[320px] object-cover" />
+    <section className="mx-auto max-w-6xl px-4 py-10 md:px-6 md:py-14">
+      <div className="reveal grid overflow-hidden rounded-[30px] bg-suifu-primary text-white shadow-soft md:grid-cols-[1.04fr_0.96fr]">
+        <SafeImage src={imageFor(data, "limitedMenu")} fallback={yuzuLimited} alt={item.name} className="h-full min-h-[320px] w-full object-cover" />
         <div className="p-6 md:p-10">
           <span className="eyebrow text-white/72">LIMITED</span>
           <h2 className="mt-4 font-serif text-4xl font-black md:text-5xl">{item.name}</h2>
@@ -360,7 +375,8 @@ function LimitedMenu({ data }) {
 function LineSection({ data }) {
   return (
     <section id="line" className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-      <div className="reveal rounded-[28px] bg-suifu-night p-6 text-white shadow-soft md:p-8">
+      <div className="reveal relative overflow-hidden rounded-[28px] bg-suifu-night p-6 text-white shadow-soft md:p-8">
+        <div className="light-sweep" />
         <SectionTitle label="LINE" title="来店前の確認をLINEで。" light />
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {data.lineActions.map((action) => (
@@ -376,7 +392,7 @@ function Menu({ data }) {
   return (
     <section id="menu" className="mx-auto max-w-6xl px-4 py-12 md:px-6">
       <SectionTitle label="MENU" title="お品書き" />
-      <div className="reveal mt-5 overflow-hidden rounded-[28px] bg-white shadow-soft">
+      <div className="reveal mt-5 overflow-hidden rounded-[28px] border border-suifu-primary/10 bg-white shadow-soft">
         <SafeImage src={imageFor(data, "menu")} fallback={menuFull} alt="らぁ麺 翠風のお品書き" className="w-full object-cover" />
       </div>
     </section>
@@ -387,7 +403,7 @@ function Movie() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 md:px-6">
       <SectionTitle label="MOVIE" title="湯気まで伝わる、初夏の一杯。" />
-      <video src={movieA} poster={heroImage} className="reveal mt-5 aspect-video w-full rounded-[28px] object-cover shadow-soft" controls playsInline preload="metadata" />
+      <video src={movieA} poster={heroImage} className="reveal mt-5 aspect-video w-full rounded-[28px] bg-suifu-night object-cover shadow-soft" controls playsInline preload="metadata" />
     </section>
   );
 }
@@ -403,7 +419,7 @@ function Gallery({ data }) {
       <SectionTitle label="SHOP" title="落ち着いて過ごせる店内。" />
       <div className="mt-5 grid gap-4 md:grid-cols-3">
         {items.map(([src, fallback, title]) => (
-          <article key={title} className="reveal overflow-hidden rounded-[24px] bg-white shadow-card">
+          <article key={title} className="reveal overflow-hidden rounded-[24px] border border-suifu-primary/10 bg-white shadow-card">
             <SafeImage src={src} fallback={fallback} alt={title} className="aspect-[4/3] w-full object-cover" />
             <h3 className="p-4 font-serif text-2xl font-black">{title}</h3>
           </article>
@@ -437,17 +453,16 @@ function Access({ data }) {
 function StickyCta({ data }) {
   const items = [
     ["LINE", "#line", MessageCircle, "bg-[#06c755]"],
-    ["営業", "#today", Clock3, "bg-suifu-accent"],
-    ["空席", "#crowd", Users, "bg-suifu-accent"],
+    ["電話", `tel:${data.access.phone}`, Phone, "bg-suifu-accent"],
     ["地図", "#access", MapPin, "bg-suifu-accent"],
-    ["電話", `tel:${data.access.phone}`, Phone, "bg-suifu-accent"]
+    ["品書", "#menu", Soup, "bg-suifu-accent"]
   ];
   return (
-    <aside className="fixed bottom-3 left-3 right-3 z-40 grid grid-cols-5 gap-1 rounded-[20px] bg-suifu-ink/92 p-2 shadow-2xl md:hidden">
+    <aside className="fixed bottom-2 left-0 z-40 grid w-screen max-w-[390px] grid-cols-4 gap-1 overflow-hidden rounded-r-[18px] bg-suifu-ink/94 p-1.5 shadow-2xl md:hidden">
       {items.map(([label, href, Icon, color]) => (
-        <a key={label} href={href} className={`grid min-h-12 place-items-center rounded-2xl text-[10px] font-black text-white ${color}`}>
+        <a key={label} href={href} className={`grid min-h-11 min-w-0 place-items-center overflow-hidden rounded-[14px] text-[9px] font-black text-white ${color}`}>
           <Icon className="h-4 w-4" />
-          {label}
+          <span className="max-w-full truncate">{label}</span>
         </a>
       ))}
     </aside>
