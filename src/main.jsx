@@ -2,13 +2,17 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Bell,
+  CheckCircle2,
   Clock3,
   Gauge,
+  Image as ImageIcon,
   Instagram,
   MapPin,
   MessageCircle,
   Navigation,
   Phone,
+  RotateCcw,
+  Save,
   Settings,
   Soup,
   Store,
@@ -19,10 +23,12 @@ import "./styles.css";
 import {
   loadInitialSiteData,
   loadSiteData,
+  normalizeSiteData,
   resetSiteData,
   saveSiteData,
   updateSiteData
 } from "./lib/siteData.js";
+import { isSupabaseConfigured } from "./lib/supabaseClient.js";
 
 import heroImage from "../assets/works_ramen_cm_05_thumb.png";
 import movieA from "../assets/works_ramen_cm_05.mp4";
@@ -42,16 +48,28 @@ const themeStyle = {
   "--color-ink": "28 32 22",
   "--color-muted": "82 91 67",
   "--color-night": "24 27 20",
-  "--color-steam": "239 233 210"
+  "--color-steam": "239 233 210",
+  "--motion-slow": "7s",
+  "--motion-normal": "720ms",
+  "--radius-brand": "24px"
 };
 
-const proposalCards = [
-  ["CM動画付きLP", "料理の温度感まで伝わる動画を、ファーストビューやSNSに展開します。", Video],
-  ["LINE導線", "席確認、問い合わせ、限定麺の売り切れ通知まで自然に接続します。", MessageCircle],
-  ["混雑/空席表示", "来店前の不安を減らし、電話確認の負担も軽くします。", Users],
-  ["Googleマップ誘導", "現在地からの経路、目印、外観写真で初来店の迷いを減らします。", MapPin],
-  ["限定メニュー告知", "季節商品や数量限定メニューを、LPとSNSで同時に訴求できます。", Bell],
-  ["月次更新/保守", "営業時間、メニュー、告知、写真差し替えまで継続運用できます。", Settings]
+const fallbackImages = {
+  hero: heroImage,
+  limitedMenu: yuzuLimited,
+  menu: menuFull,
+  exterior: shopSign,
+  interior: counterWide,
+  gallery: [shopCollage, tableArea, counterWide, shopSign]
+};
+
+const proposalFeatures = [
+  ["CM動画付きLP", "料理の温度感まで伝わる動画を、ファーストビューとSNS導線に活用します。", Video],
+  ["LINE予約/問い合わせ導線", "席確認、売り切れ通知、来店前の問い合わせをスマホで完結させます。", MessageCircle],
+  ["混雑/空席表示", "初来店客の不安を減らし、電話確認の負担も軽くします。", Users],
+  ["Googleマップ誘導", "現在地からの経路、目印、外観写真を自然に見せます。", MapPin],
+  ["限定メニュー告知", "季節商品や数量限定メニューを、来店理由として強く見せます。", Bell],
+  ["月次更新/保守", "営業時間、写真、告知、動画差し替えまで継続的に整えます。", Settings]
 ];
 
 const plans = [
@@ -61,26 +79,76 @@ const plans = [
   ["PREMIUM", "800,000円〜", "ブランド設計、撮影ディレクション、広告展開まで個別設計"]
 ];
 
-function imageFor(siteData, key, fallback) {
-  const value = siteData?.images?.[key];
-  if (Array.isArray(value)) return value[0] || fallback;
-  return value || fallback;
+function safeData(data) {
+  return normalizeSiteData(data);
+}
+
+function imageFor(siteData, key) {
+  const images = safeData(siteData).images;
+  const value = images?.[key];
+  if (Array.isArray(value)) return value[0] || fallbackImages[key]?.[0] || heroImage;
+  return value || fallbackImages[key] || heroImage;
+}
+
+function galleryFor(siteData) {
+  const value = safeData(siteData).images?.gallery;
+  return Array.isArray(value) && value.length ? value : fallbackImages.gallery;
+}
+
+function SafeImage({ src, fallback = heroImage, alt, className }) {
+  const [current, setCurrent] = useState(src || fallback);
+  useEffect(() => setCurrent(src || fallback), [src, fallback]);
+  return (
+    <img
+      src={current}
+      alt={alt}
+      className={className}
+      onError={() => {
+        console.warn("IMAGE LOAD FAILED", current);
+        setCurrent(fallback);
+      }}
+    />
+  );
+}
+
+function useReveal(deps = []) {
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll(".reveal"));
+    nodes.forEach((node) => node.classList.add("is-visible"));
+  }, deps);
 }
 
 function App() {
   const route = window.location.pathname.replace(/\/$/, "") || "/";
-  const [siteData, setSiteData] = useState(loadInitialSiteData);
-  const [dataStatus, setDataStatus] = useState({ loading: true, source: "localStorage", error: null, configMissing: false });
+  const [siteData, setSiteData] = useState(() => safeData(loadInitialSiteData()));
+  const [dataStatus, setDataStatus] = useState({
+    loading: true,
+    source: "fallback",
+    error: null,
+    configMissing: !isSupabaseConfigured
+  });
 
-  useReveal([route]);
+  useReveal([route, dataStatus.source]);
 
   useEffect(() => {
     let active = true;
-    loadSiteData().then((result) => {
-      if (!active) return;
-      setSiteData(result.data);
-      setDataStatus({ loading: false, source: result.source, error: result.error || null, configMissing: Boolean(result.configMissing) });
-    });
+    loadSiteData()
+      .then((result) => {
+        if (!active) return;
+        setSiteData(safeData(result.data));
+        setDataStatus({
+          loading: false,
+          source: result.source,
+          error: result.error || null,
+          configMissing: Boolean(result.configMissing)
+        });
+      })
+      .catch((error) => {
+        console.error("App loadSiteData failed:", error);
+        if (!active) return;
+        setSiteData(safeData(siteData));
+        setDataStatus({ loading: false, source: "fallback", error, configMissing: !isSupabaseConfigured });
+      });
     return () => {
       active = false;
     };
@@ -88,50 +156,44 @@ function App() {
 
   if (route === "/proposal") return <ProposalPage />;
   if (route === "/owner-demo") {
-    return (
-      <OwnerDemoPage
-        siteData={siteData}
-        setSiteData={setSiteData}
-        dataStatus={dataStatus}
-        setDataStatus={setDataStatus}
-      />
-    );
+    return <OwnerDemoPage siteData={siteData} setSiteData={setSiteData} dataStatus={dataStatus} setDataStatus={setDataStatus} />;
   }
   return <PublicLp siteData={siteData} />;
 }
 
 function PublicLp({ siteData }) {
+  const data = safeData(siteData);
   return (
-    <div className="min-h-screen overflow-x-hidden text-suifu-ink" style={themeStyle}>
+    <div className="min-h-screen overflow-x-hidden bg-suifu-paper text-suifu-ink" style={themeStyle}>
       <AmbientLayer />
-      <Header />
+      <Header data={data} />
       <main>
-        <Hero siteData={siteData} />
-        <TodayStatus siteData={siteData} />
-        <CrowdStatus siteData={siteData} />
-        <News siteData={siteData} />
-        <Concept siteData={siteData} />
-        <LimitedMenu siteData={siteData} />
-        <LineSection siteData={siteData} />
-        <Menu siteData={siteData} />
+        <Hero data={data} />
+        <TodayStatus data={data} />
+        <CrowdStatus data={data} />
+        <News data={data} />
+        <Concept data={data} />
+        <LimitedMenu data={data} />
+        <LineSection data={data} />
+        <Menu data={data} />
         <Movie />
-        <Gallery siteData={siteData} />
-        <Access siteData={siteData} />
+        <Gallery data={data} />
+        <Access data={data} />
       </main>
-      <StickyCta />
+      <StickyCta data={data} />
     </div>
   );
 }
 
-function Header() {
+function Header({ data }) {
   return (
     <header className="relative z-30 mx-auto flex max-w-6xl items-center justify-between px-4 py-5 md:px-6">
       <a href="/" className="flex items-center gap-3">
         <span className="grid h-12 w-12 place-items-center rounded-full bg-suifu-primary font-serif text-2xl font-black text-white">翠</span>
         <span>
-          <span className="block text-[10px] font-bold tracking-[0.18em] text-suifu-muted">らぁめん すいふう</span>
-          <strong className="block font-serif text-3xl leading-none">翠風</strong>
-          <span className="block text-[10px] font-bold tracking-[0.45em] text-suifu-muted">SUIFU</span>
+          <span className="block text-[10px] font-bold tracking-[0.18em] text-suifu-muted">{data.brand.kana}</span>
+          <strong className="block font-serif text-3xl leading-none">{data.brand.shortName}</strong>
+          <span className="block text-[10px] font-bold tracking-[0.45em] text-suifu-muted">{data.brand.roman}</span>
         </span>
       </a>
       <nav className="hidden items-center gap-1 rounded-full border border-suifu-primary/15 bg-white/70 p-1.5 shadow-insetLine backdrop-blur md:flex">
@@ -151,36 +213,36 @@ function Header() {
   );
 }
 
-function Hero({ siteData }) {
+function Hero({ data }) {
   return (
-    <section id="top" className="relative mx-auto grid max-w-6xl gap-6 px-4 pb-10 pt-2 md:grid-cols-[0.92fr_1.08fr] md:px-6 md:pb-16">
+    <section className="relative mx-auto grid max-w-6xl gap-6 px-4 pb-10 pt-2 md:grid-cols-[0.92fr_1.08fr] md:px-6 md:pb-16">
       <div className="reveal flex flex-col justify-center">
-        <span className="eyebrow text-suifu-primary">淡麗塩 / 期間限定</span>
-        <h1 className="mt-4 font-serif text-5xl font-black leading-[1.04] md:text-7xl">
-          柚子薫る、<br />澄みわたる<br />塩らぁ麺。
+        <span className="eyebrow text-suifu-primary">淡麗塩 / 季節限定</span>
+        <h1 className="mt-4 font-serif text-5xl font-black leading-[1.06] md:text-7xl">
+          澄みわたる、<br />初夏の一杯。
         </h1>
         <p className="mt-5 max-w-xl text-base font-bold leading-[1.9] text-suifu-muted">
-          鶏の旨みを引き出した澄んだスープに、国産柚子の香りを重ねました。軽やかで、最後まで飲み干したくなる季節の一杯です。
+          鶏の旨みを引き出した澄んだ塩スープに、国産柚子の香りを重ねました。軽やかで、最後まで飲み干したくなる一杯です。
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <a href="#menu" className="rounded-full bg-suifu-primary px-6 py-3 text-sm font-black text-white">お品書き</a>
-          <a href="#access" className="rounded-full border border-suifu-primary/20 bg-white/70 px-6 py-3 text-sm font-black text-suifu-primary">アクセス</a>
+          <a href="#menu" className="rounded-full bg-suifu-primary px-6 py-3 text-sm font-black text-white shadow-card">お品書きを見る</a>
+          <a href="#access" className="rounded-full border border-suifu-primary/20 bg-white/75 px-6 py-3 text-sm font-black text-suifu-primary">アクセスを見る</a>
         </div>
       </div>
       <div className="reveal relative">
-        <img src={imageFor(siteData, "hero", heroImage)} alt="らぁ麺 翠風の一杯" className="aspect-square w-full rounded-[28px] object-cover shadow-soft" />
-        <div className="absolute bottom-4 left-4 rounded-2xl bg-white/88 p-4 shadow-card backdrop-blur">
-          <span className="text-xs font-black text-suifu-primary">{siteData.limitedMenu.status}</span>
-          <strong className="block font-serif text-2xl">{siteData.limitedMenu.name}</strong>
-          <span className="text-sm font-black text-suifu-accent">残り{siteData.limitedMenu.remaining}杯</span>
+        <SafeImage src={imageFor(data, "hero")} alt={`${data.brand.name}のらぁ麺`} className="aspect-square w-full rounded-[28px] object-cover shadow-soft" />
+        <div className="absolute bottom-4 left-4 rounded-2xl bg-white/90 p-4 shadow-card backdrop-blur">
+          <span className="text-xs font-black text-suifu-primary">{data.limitedMenu.status}</span>
+          <strong className="block font-serif text-2xl">{data.limitedMenu.name}</strong>
+          <span className="text-sm font-black text-suifu-accent">本日残り{data.limitedMenu.remaining}杯</span>
         </div>
       </div>
     </section>
   );
 }
 
-function TodayStatus({ siteData }) {
-  const status = siteData.shopStatus;
+function TodayStatus({ data }) {
+  const status = data.shopStatus;
   return (
     <section id="today" className="mx-auto max-w-6xl px-4 py-6 md:px-6">
       <div className="reveal grid gap-4 rounded-[28px] bg-suifu-primary p-5 text-white shadow-soft md:grid-cols-4 md:p-6">
@@ -194,13 +256,13 @@ function TodayStatus({ siteData }) {
   );
 }
 
-function CrowdStatus({ siteData }) {
-  const crowd = siteData.crowdStatus;
+function CrowdStatus({ data }) {
+  const crowd = data.crowdStatus;
   return (
     <section id="crowd" className="mx-auto max-w-6xl px-4 py-10 md:px-6">
       <SectionTitle label="LIVE STATUS" title="来店前に、席の空気を確認。" />
       <div className="mt-5 grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
-        <div className="reveal rounded-[24px] bg-white/82 p-5 shadow-card">
+        <div className="reveal rounded-[24px] bg-white/85 p-5 shadow-card">
           <Info label="ただいま" value={crowd.current} dark />
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Info label="カウンター" value={`残り${crowd.counterSeats}席`} dark />
@@ -208,13 +270,13 @@ function CrowdStatus({ siteData }) {
           </div>
           <p className="mt-4 text-sm font-bold leading-relaxed text-suifu-muted">{crowd.updateNote}</p>
         </div>
-        <div className="reveal rounded-[24px] bg-white/82 p-5 shadow-card">
+        <div className="reveal rounded-[24px] bg-white/85 p-5 shadow-card">
           <div className="grid gap-3">
-            {crowd.slots.map((slot) => (
+            {data.crowdStatus.slots.map((slot) => (
               <div key={slot.time} className="grid grid-cols-[64px_1fr_86px] items-center gap-3 text-sm font-black">
                 <span className="text-suifu-muted">{slot.time}</span>
                 <span className="h-3 overflow-hidden rounded-full bg-suifu-paper">
-                  <span className="block h-full rounded-full bg-suifu-primary" style={{ width: `${slot.level}%` }} />
+                  <span className="block h-full rounded-full bg-suifu-primary" style={{ width: `${Math.max(0, Math.min(100, Number(slot.level) || 0))}%` }} />
                 </span>
                 <span className="text-right text-suifu-primary">{slot.label}</span>
               </div>
@@ -226,20 +288,20 @@ function CrowdStatus({ siteData }) {
   );
 }
 
-function News({ siteData }) {
-  const items = siteData.news.filter((item) => item.status !== "下書き").slice(0, 3);
+function News({ data }) {
+  const publishedNews = data.news.filter((item) => item.status !== "下書き");
   return (
     <section id="news" className="mx-auto max-w-6xl px-4 py-10 md:px-6">
       <SectionTitle label="NEWS" title="本日のお知らせ" />
-      <div className="mt-5 grid gap-3">
-        {items.map((item) => (
-          <article key={item.title} className="reveal rounded-[22px] border border-suifu-primary/10 bg-white/82 p-5 shadow-insetLine">
-            <div className="flex flex-wrap items-center gap-3 text-xs font-black text-suifu-primary">
-              <span>{item.tag}</span>
-              <span>{item.date}</span>
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        {publishedNews.map((item) => (
+          <article key={`${item.date}-${item.title}`} className="reveal rounded-[22px] bg-white/85 p-5 shadow-card">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <span className="rounded-full bg-suifu-bamboo px-3 py-1 text-xs font-black text-suifu-primary">{item.tag}</span>
+              <span className="text-xs font-bold text-suifu-muted">{item.date}</span>
             </div>
-            <h3 className="mt-2 font-serif text-2xl font-black">{item.title}</h3>
-            <p className="mt-2 text-sm font-bold leading-relaxed text-suifu-muted">{item.text}</p>
+            <h3 className="font-serif text-xl font-black">{item.title}</h3>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-suifu-muted">{item.text}</p>
           </article>
         ))}
       </div>
@@ -247,35 +309,46 @@ function News({ siteData }) {
   );
 }
 
-function Concept({ siteData }) {
+function Concept({ data }) {
   return (
-    <section id="concept" className="mx-auto grid max-w-6xl gap-6 px-4 py-12 md:grid-cols-2 md:px-6">
+    <section id="concept" className="mx-auto grid max-w-6xl gap-6 px-4 py-12 md:grid-cols-[1fr_1fr] md:px-6">
       <div className="reveal">
-        <SectionTitle label="CONCEPT" title="澄みきった一杯を、毎日の食事に。" />
+        <SectionTitle label="CONCEPT" title="毎日食べたくなる、やさしい塩。" />
         <p className="mt-5 text-base font-bold leading-[2] text-suifu-muted">
-          余計な重さを残さず、出汁の旨みと香りで満たす淡麗塩。昼にも夜にも食べたくなる、静かで記憶に残るらぁ麺を目指しています。
+          翠風が大切にしているのは、強い個性よりも、食後に残る静けさです。鶏の旨み、昆布の丸み、香味野菜の余韻を重ね、淡麗でありながら物足りなさのない一杯を目指しています。
+        </p>
+        <p className="mt-4 text-base font-bold leading-[2] text-suifu-muted">
+          竹の影が揺れるような涼しさと、厨房から立ちのぼる湯気。都市の中でふっと息をつける、そんな一杯をお届けします。
         </p>
       </div>
-      <img src={imageFor(siteData, "interior", shopCollage)} alt="店内と料理" className="reveal aspect-square w-full rounded-[28px] object-cover shadow-soft" />
+      <div className="reveal grid grid-cols-2 gap-3">
+        <SafeImage src={counterWide} alt="店内カウンター" className="col-span-2 aspect-[16/9] rounded-[24px] object-cover shadow-card" />
+        <SafeImage src={tableArea} alt="テーブル席" className="aspect-square rounded-[22px] object-cover shadow-card" />
+        <SafeImage src={shopSign} alt="翠風の看板" className="aspect-square rounded-[22px] object-cover shadow-card" />
+      </div>
     </section>
   );
 }
 
-function LimitedMenu({ siteData }) {
-  const item = siteData.limitedMenu;
-  if (!item.visible) return null;
+function LimitedMenu({ data }) {
+  const menu = data.limitedMenu;
+  if (!menu.visible) return null;
   return (
-    <section className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-      <div className="reveal grid overflow-hidden rounded-[30px] bg-suifu-primary text-white shadow-soft md:grid-cols-2">
-        <img src={imageFor(siteData, "limitedMenu", yuzuLimited)} alt={item.name} className="h-full min-h-[320px] object-cover" />
-        <div className="p-6 md:p-10">
-          <span className="eyebrow text-white/72">LIMITED</span>
-          <h2 className="mt-4 font-serif text-4xl font-black md:text-5xl">{item.name}</h2>
-          <p className="mt-4 text-base font-bold leading-[1.9] text-white/84">{item.message}</p>
-          <div className="mt-7 rounded-3xl bg-white/12 p-5">
-            <span className="text-sm font-black text-white/70">{item.status}</span>
-            <strong className="block font-serif text-5xl">残り{item.remaining}杯</strong>
-            <span className="text-sm font-bold text-white/74">全{item.total}杯</span>
+    <section className="mx-auto max-w-6xl px-4 py-12 md:px-6">
+      <div className="reveal grid overflow-hidden rounded-[28px] bg-white/88 shadow-soft md:grid-cols-[1fr_0.9fr]">
+        <SafeImage src={imageFor(data, "limitedMenu")} fallback={yuzuLimited} alt={menu.name} className="h-full min-h-[320px] w-full object-cover" />
+        <div className="flex flex-col justify-center p-6 md:p-10">
+          <span className="eyebrow text-suifu-accent">SEASONAL LIMITED</span>
+          <h2 className="mt-3 font-serif text-4xl font-black">{menu.name}</h2>
+          <p className="mt-4 text-base font-bold leading-[1.9] text-suifu-muted">{menu.message}</p>
+          <div className="mt-6 rounded-2xl bg-suifu-paper p-4">
+            <div className="flex items-end justify-between">
+              <span className="font-black text-suifu-primary">{menu.status}</span>
+              <strong className="font-serif text-4xl text-suifu-accent">残り{menu.remaining}杯</strong>
+            </div>
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-white">
+              <span className="block h-full rounded-full bg-suifu-accent" style={{ width: `${Math.max(0, Math.min(100, (menu.remaining / Math.max(menu.total, 1)) * 100))}%` }} />
+            </div>
           </div>
         </div>
       </div>
@@ -283,14 +356,17 @@ function LimitedMenu({ siteData }) {
   );
 }
 
-function LineSection({ siteData }) {
+function LineSection({ data }) {
   return (
-    <section id="line" className="mx-auto max-w-6xl px-4 py-10 md:px-6">
+    <section className="mx-auto max-w-6xl px-4 py-10 md:px-6">
       <div className="reveal rounded-[28px] bg-suifu-night p-6 text-white shadow-soft md:p-8">
-        <SectionTitle label="LINE" title="来店前の確認をLINEで。" light />
+        <SectionTitle label="LINE" title="来店前の確認はLINEから。" light />
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {siteData.lineActions.map((item) => (
-            <a key={item} href="#" className="rounded-2xl bg-[#06c755] px-5 py-4 text-sm font-black text-white">{item}</a>
+          {data.lineActions.map((action) => (
+            <a key={action} href="https://line.me/" className="rounded-2xl bg-white/10 p-4 text-sm font-black hover:bg-white/16">
+              <MessageCircle className="mb-3 h-5 w-5 text-suifu-bamboo" />
+              {action}
+            </a>
           ))}
         </div>
       </div>
@@ -298,12 +374,12 @@ function LineSection({ siteData }) {
   );
 }
 
-function Menu({ siteData }) {
+function Menu({ data }) {
   return (
     <section id="menu" className="mx-auto max-w-6xl px-4 py-12 md:px-6">
       <SectionTitle label="MENU" title="お品書き" />
-      <div className="reveal mt-5 overflow-hidden rounded-[28px] bg-white shadow-soft">
-        <img src={imageFor(siteData, "menu", menuFull)} alt="らぁ麺 翠風のお品書き" className="w-full object-cover" />
+      <div className="reveal mt-5 rounded-[28px] bg-white/85 p-2 shadow-soft md:p-3">
+        <SafeImage src={imageFor(data, "menu")} fallback={menuFull} alt="翠風のお品書き" className="w-full rounded-[22px] object-cover" />
       </div>
     </section>
   );
@@ -313,478 +389,479 @@ function Movie() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 md:px-6">
       <SectionTitle label="MOVIE" title="湯気まで伝わる、初夏の一杯。" />
-      <video src={movieA} poster={heroImage} className="reveal mt-5 aspect-video w-full rounded-[28px] object-cover shadow-soft" controls playsInline preload="metadata" />
+      <div className="reveal mt-5 overflow-hidden rounded-[28px] bg-suifu-night shadow-soft">
+        <video src={movieA} controls playsInline muted poster={heroImage} className="aspect-video w-full object-cover" />
+      </div>
     </section>
   );
 }
 
-function Gallery({ siteData }) {
-  const items = [
-    [imageFor(siteData, "interior", counterWide), "カウンター"],
-    [imageFor(siteData, "gallery", tableArea), "テーブル席"],
-    [imageFor(siteData, "exterior", shopSign), "看板"]
-  ];
+function Gallery({ data }) {
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 md:px-6">
-      <SectionTitle label="SHOP" title="落ち着いて過ごせる店内。" />
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
-        {items.map(([src, title]) => (
-          <article key={title} className="reveal overflow-hidden rounded-[24px] bg-white shadow-card">
-            <img src={src} alt={title} className="aspect-[4/3] w-full object-cover" />
-            <h3 className="p-4 font-serif text-2xl font-black">{title}</h3>
-          </article>
+      <SectionTitle label="GALLERY" title="店内写真" />
+      <div className="mt-5 grid gap-3 md:grid-cols-4">
+        {galleryFor(data).map((src, index) => (
+          <SafeImage key={`${src}-${index}`} src={src} fallback={fallbackImages.gallery[index % fallbackImages.gallery.length]} alt={`店内写真 ${index + 1}`} className="reveal aspect-square rounded-[22px] object-cover shadow-card md:first:col-span-2 md:first:aspect-[2/1]" />
         ))}
       </div>
     </section>
   );
 }
 
-function Access({ siteData }) {
-  const access = siteData.access;
+function Access({ data }) {
+  const access = data.access;
   return (
-    <section id="access" className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:pb-24">
-      <SectionTitle label="ACCESS" title="初めてでも迷わないように。" />
-      <div className="mt-5 grid gap-5 md:grid-cols-[0.85fr_1.15fr]">
-        <div className="reveal rounded-[24px] bg-white/82 p-5 shadow-card">
+    <section id="access" className="mx-auto max-w-6xl px-4 pb-28 pt-12 md:px-6 md:pb-16">
+      <SectionTitle label="ACCESS" title="初めての方へ" />
+      <div className="mt-5 grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
+        <div className="reveal rounded-[24px] bg-white/85 p-5 shadow-card">
+          <SafeImage src={imageFor(data, "exterior")} fallback={shopSign} alt="翠風の看板" className="aspect-[4/3] w-full rounded-[18px] object-cover" />
+          <p className="mt-4 text-sm font-bold leading-relaxed text-suifu-muted">{access.landmark}</p>
+        </div>
+        <div className="reveal rounded-[24px] bg-white/85 p-5 shadow-card">
           <Info label="住所" value={access.address} dark />
-          <Info label="最寄駅" value={access.station} dark />
-          <Info label="目印" value={access.landmark} dark />
-          <Info label="営業時間" value={access.hours} dark />
-          <a href={access.mapUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-suifu-primary text-sm font-black text-white">
+          <div className="mt-4 grid gap-3">
+            <Info label="最寄駅" value={access.station} dark />
+            <Info label="営業時間" value={access.hours} dark />
+            <Info label="電話" value={access.phone} dark />
+          </div>
+          <a href={access.mapUrl} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 rounded-full bg-suifu-primary px-5 py-3 text-sm font-black text-white">
             <Navigation className="h-4 w-4" /> 現在地から経路を見る
           </a>
         </div>
-        <img src={imageFor(siteData, "exterior", shopSign)} alt="店舗看板" className="reveal aspect-[4/3] w-full rounded-[24px] object-cover shadow-soft" />
       </div>
     </section>
   );
 }
 
+function StickyCta({ data }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-suifu-primary/10 bg-white/92 px-2 py-2 shadow-[0_-12px_34px_rgb(44_58_30_/_0.12)] backdrop-blur md:hidden">
+      <div className="mx-auto grid max-w-md grid-cols-5 gap-1 text-[11px] font-black text-suifu-primary">
+        <a href="#menu" className="grid place-items-center rounded-xl p-2"><Soup className="h-4 w-4" />品書き</a>
+        <a href="#today" className="grid place-items-center rounded-xl p-2"><Clock3 className="h-4 w-4" />営業</a>
+        <a href="https://line.me/" className="grid place-items-center rounded-xl bg-suifu-primary p-2 text-white"><MessageCircle className="h-4 w-4" />LINE</a>
+        <a href={data.access.mapUrl} className="grid place-items-center rounded-xl p-2"><MapPin className="h-4 w-4" />地図</a>
+        <a href={`tel:${data.access.phone}`} className="grid place-items-center rounded-xl p-2"><Phone className="h-4 w-4" />電話</a>
+      </div>
+    </div>
+  );
+}
+
 function ProposalPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden text-suifu-ink" style={themeStyle}>
+    <div className="min-h-screen bg-suifu-paper text-suifu-ink" style={themeStyle}>
       <AmbientLayer />
-      <Header />
-      <main className="mx-auto max-w-6xl px-4 pb-20 pt-8 md:px-6">
-        <section className="reveal rounded-[32px] bg-white/82 p-6 shadow-soft md:p-10">
-          <span className="eyebrow text-suifu-primary">PROPOSAL</span>
-          <h1 className="mt-3 font-serif text-4xl font-black md:text-6xl">CM動画付き店舗LP制作パッケージ</h1>
-          <p className="mt-5 max-w-3xl text-base font-bold leading-[1.9] text-suifu-muted">
-            飲食店の魅力を、LP、動画、LINE、Googleマップ、SNS運用まで一体で見せる提案用デモです。
-          </p>
-        </section>
-        <section className="py-12">
-          <SectionTitle label="VALUE" title="このLPで実現できること" />
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {proposalCards.map(([title, text, Icon]) => (
-              <article key={title} className="reveal rounded-[24px] bg-white/82 p-5 shadow-card">
-                <Icon className="h-6 w-6 text-suifu-primary" />
-                <h3 className="mt-4 font-serif text-2xl font-black">{title}</h3>
-                <p className="mt-2 text-sm font-bold leading-relaxed text-suifu-muted">{text}</p>
-              </article>
-            ))}
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 md:px-6">
+        <a href="/" className="font-serif text-2xl font-black text-suifu-primary">翠風 LP Package</a>
+        <a href="/owner-demo" className="rounded-full border border-suifu-primary/20 bg-white/75 px-4 py-2 text-sm font-black text-suifu-primary">更新イメージを見る</a>
+      </header>
+      <main className="mx-auto max-w-6xl px-4 pb-16 md:px-6">
+        <section className="grid gap-8 py-12 md:grid-cols-[0.95fr_1.05fr]">
+          <div>
+            <span className="eyebrow text-suifu-primary">CM動画付き店舗LP制作パッケージ</span>
+            <h1 className="mt-4 font-serif text-5xl font-black leading-tight md:text-7xl">古いHPを、来店導線に変える。</h1>
+            <p className="mt-5 max-w-2xl text-base font-bold leading-[1.9] text-suifu-muted">
+              スマホで見た瞬間に、料理・場所・営業状況・問い合わせ導線が伝わる店舗向けLPです。動画、LINE、Googleマップ、SNS素材まで一体で設計します。
+            </p>
           </div>
+          <SafeImage src={shopCollage} alt="翠風デモ" className="aspect-[4/3] rounded-[28px] object-cover shadow-soft" />
         </section>
-        <section className="py-12">
-          <SectionTitle label="PRICE" title="料金プラン" />
-          <div className="mt-5 grid gap-4 md:grid-cols-4">
-            {plans.map(([name, price, text]) => (
-              <article key={name} className="reveal rounded-[24px] border border-suifu-primary/10 bg-white/82 p-5 shadow-card">
-                <span className="text-xs font-black tracking-[0.18em] text-suifu-primary">{name}</span>
-                <strong className="mt-3 block font-serif text-3xl">{price}</strong>
-                <p className="mt-3 text-sm font-bold leading-relaxed text-suifu-muted">{text}</p>
-              </article>
-            ))}
-          </div>
-          <div className="reveal mt-5 rounded-[24px] bg-suifu-primary p-5 text-white shadow-soft">
-            <strong className="font-serif text-3xl">月額保守 19,800円〜98,000円</strong>
-            <p className="mt-2 text-sm font-bold text-white/80">更新代行、SNS素材作成、月次改善まで運用に合わせて設計します。</p>
-          </div>
-        </section>
-        <a href="/owner-demo" className="reveal inline-flex rounded-full bg-suifu-primary px-6 py-3 text-sm font-black text-white">更新イメージを見る</a>
+        <SectionTitle label="FEATURES" title="このLPで実現できること" />
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {proposalFeatures.map(([title, text, Icon]) => (
+            <article key={title} className="rounded-[24px] bg-white/85 p-5 shadow-card">
+              <Icon className="h-6 w-6 text-suifu-primary" />
+              <h3 className="mt-4 font-serif text-xl font-black">{title}</h3>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-suifu-muted">{text}</p>
+            </article>
+          ))}
+        </div>
+        <SectionTitle label="PRICE" title="料金プラン" className="mt-14" />
+        <div className="mt-5 grid gap-4 md:grid-cols-4">
+          {plans.map(([name, price, text]) => (
+            <article key={name} className="rounded-[24px] bg-white/88 p-5 shadow-card">
+              <span className="text-xs font-black tracking-[0.18em] text-suifu-primary">{name}</span>
+              <strong className="mt-3 block font-serif text-3xl">{price}</strong>
+              <p className="mt-3 text-sm font-bold leading-relaxed text-suifu-muted">{text}</p>
+            </article>
+          ))}
+        </div>
+        <div className="mt-6 rounded-[24px] bg-suifu-primary p-6 text-white shadow-soft">
+          <h3 className="font-serif text-2xl font-black">月額運用</h3>
+          <p className="mt-2 font-bold">保守ライト 19,800円 / 運用スタンダード 49,800円 / 集客グロース 98,000円</p>
+        </div>
+        <SectionTitle label="FLOW" title="制作フロー" className="mt-14" />
+        <div className="mt-5 grid gap-3 md:grid-cols-6">
+          {["ヒアリング", "既存サイト/SNS診断", "デモ作成", "LP/動画制作", "公開", "月次更新/改善"].map((item, index) => (
+            <div key={item} className="rounded-[20px] bg-white/85 p-4 text-sm font-black shadow-card">
+              <span className="text-suifu-gold">0{index + 1}</span>
+              <p className="mt-2">{item}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-12 rounded-[28px] bg-suifu-night p-8 text-white shadow-soft">
+          <h2 className="font-serif text-3xl font-black">この形式で自店舗版を作る</h2>
+          <p className="mt-3 max-w-2xl font-bold leading-relaxed text-white/75">素材が少ない店舗でも、既存写真・短尺動画・メニュー情報から提案用デモを作成できます。</p>
+          <a href="/owner-demo" className="mt-6 inline-flex rounded-full bg-white px-6 py-3 text-sm font-black text-suifu-primary">更新イメージを見る</a>
+        </div>
       </main>
     </div>
   );
 }
 
 function OwnerDemoPage({ siteData, setSiteData, dataStatus, setDataStatus }) {
-  const [loggedIn, setLoggedIn] = useState(() => window.sessionStorage.getItem("suifu-owner-demo-login") === "true");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [toast, setToast] = useState("");
+  const data = safeData(siteData);
 
   useEffect(() => {
-    if (!loggedIn) return;
-    requestAnimationFrame(() => document.getElementById("dashboard")?.scrollIntoView({ block: "start" }));
-  }, [loggedIn]);
+    const onBeforeUnload = (event) => {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
+  function update(updater) {
+    updateSiteData(setSiteData, updater);
+    setDirty(true);
+  }
+
+  async function handleSave() {
+    console.log("SAVE BUTTON CLICKED");
+    const result = await saveSiteData(data);
+    setSiteData(safeData(result.data));
+    setDataStatus({ loading: false, source: result.source, error: result.error || null, configMissing: Boolean(result.configMissing) });
+    setDirty(false);
+    const message =
+      result.source === "supabase"
+        ? "クラウド保存成功"
+        : `Supabase保存失敗: ${result.error?.message || "ローカル保存中"}`;
+    setToast(message);
+    window.setTimeout(() => setToast(""), 3600);
+  }
+
+  async function handleReset() {
+    if (!window.confirm("初期データに戻しますか？")) return;
+    const result = await resetSiteData();
+    setSiteData(safeData(result.data));
+    setDataStatus({ loading: false, source: result.source, error: result.error || null, configMissing: Boolean(result.configMissing) });
+    setDirty(false);
+    setToast("初期データへ戻しました");
+  }
 
   if (!loggedIn) {
     return (
-      <div className="min-h-screen text-suifu-ink" style={themeStyle}>
-        <AmbientLayer />
-        <Header />
-        <main className="mx-auto max-w-lg px-4 py-16">
-          <section className="reveal rounded-[28px] bg-suifu-night p-6 text-white shadow-soft">
-            <span className="eyebrow text-white/70">OWNER LOGIN</span>
-            <h1 className="mt-3 font-serif text-4xl font-black">管理画面にログイン</h1>
-            <p className="mt-4 text-sm font-bold leading-relaxed text-white/72">デモ用メール: owner@suifu-demo.jp<br />デモ用パスワード: demo1234</p>
-            <button
-              type="button"
-              onClick={() => {
-                window.sessionStorage.setItem("suifu-owner-demo-login", "true");
-                setLoggedIn(true);
-              }}
-              className="mt-6 min-h-12 w-full rounded-full bg-white text-sm font-black text-suifu-primary"
-            >
-              ログインして管理画面を開く
-            </button>
-          </section>
-        </main>
+      <div className="grid min-h-screen place-items-center bg-suifu-paper p-4 text-suifu-ink" style={themeStyle}>
+        <div className="w-full max-w-md rounded-[28px] bg-white/90 p-6 shadow-soft">
+          <span className="eyebrow text-suifu-primary">OWNER LOGIN</span>
+          <h1 className="mt-3 font-serif text-3xl font-black">翠風 管理画面</h1>
+          <p className="mt-2 text-sm font-bold text-suifu-muted">デモ用ログイン: owner@example.com / suifu-demo</p>
+          <input className="mt-5 w-full rounded-2xl border border-suifu-primary/15 bg-suifu-paper px-4 py-3 font-bold" defaultValue="owner@example.com" />
+          <input className="mt-3 w-full rounded-2xl border border-suifu-primary/15 bg-suifu-paper px-4 py-3 font-bold" defaultValue="suifu-demo" type="password" />
+          <button onClick={() => setLoggedIn(true)} className="mt-5 w-full rounded-full bg-suifu-primary px-5 py-3 font-black text-white">ログイン</button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen text-suifu-ink" style={themeStyle}>
-      <AmbientLayer />
-      <Header />
-      <AdminDemo siteData={siteData} setSiteData={setSiteData} dataStatus={dataStatus} setDataStatus={setDataStatus} />
+    <div className="min-h-screen bg-[#f6f4ec] text-suifu-ink" style={themeStyle}>
+      {toast && <div className="fixed right-4 top-4 z-50 rounded-2xl bg-suifu-night px-5 py-3 text-sm font-black text-white shadow-soft">{toast}</div>}
+      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 md:grid-cols-[240px_1fr] md:px-6">
+        <aside className="rounded-[26px] bg-suifu-night p-5 text-white shadow-soft">
+          <h1 className="font-serif text-2xl font-black">翠風 CMS</h1>
+          <p className="mt-1 text-xs font-bold text-white/60">店舗運用デモ</p>
+          <nav className="mt-6 grid gap-2 text-sm font-black">
+            {["ダッシュボード", "営業状況", "限定メニュー", "混雑/空席", "お知らせ", "LINE通知", "SNS素材", "アクセス"].map((item) => (
+              <a key={item} href={`#${item}`} className="rounded-2xl px-3 py-2 hover:bg-white/10">{item}</a>
+            ))}
+          </nav>
+          <a href="/" onClick={(e) => {
+            if (dirty && !window.confirm("未保存の変更があります。公開ページへ移動しますか？")) e.preventDefault();
+          }} className="mt-6 inline-flex w-full justify-center rounded-full bg-white px-4 py-3 text-sm font-black text-suifu-primary">
+            公開ページプレビュー
+          </a>
+        </aside>
+        <main className="grid gap-5">
+          <AdminTopBar dataStatus={dataStatus} dirty={dirty} onSave={handleSave} onReset={handleReset} />
+          <Dashboard data={data} dataStatus={dataStatus} />
+          <StatusEditor data={data} update={update} />
+          <LimitedMenuEditor data={data} update={update} />
+          <CrowdEditor data={data} update={update} />
+          <NewsEditor data={data} update={update} />
+          <LinePreview data={data} update={update} />
+          <ImageSwapManager data={data} update={update} />
+          <AccessEditor data={data} update={update} />
+        </main>
+      </div>
     </div>
   );
 }
 
-function AdminDemo({ siteData, setSiteData, dataStatus, setDataStatus }) {
-  const [dirty, setDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(null);
-  useUnsavedChangesWarning(dirty);
-
-  const errorMessage = dataStatus.error?.message || "";
-  const statusText = dataStatus.loading
-    ? "データ読込中"
-    : dataStatus.configMissing
-      ? "Supabase環境変数未設定"
-      : dataStatus.source === "supabase"
-        ? "クラウド保存中"
-        : "ローカル保存中";
-  const statusTone = dataStatus.source === "supabase" ? "bg-[#06c755]/12 text-[#068f3f]" : "bg-suifu-accent/10 text-suifu-accent";
-
-  const update = (updater) => {
-    setDirty(true);
-    updateSiteData(setSiteData, updater);
-  };
-
-  const showToast = (message, tone = "success") => {
-    setToast({ message, tone });
-    window.setTimeout(() => setToast(null), 2600);
-  };
-
-  const persist = async () => {
-    console.log("SAVE BUTTON CLICKED");
-    setSaving(true);
-    const result = await saveSiteData(siteData);
-    setSiteData(result.data);
-    setDataStatus({ loading: false, source: result.source, error: result.error || null, configMissing: Boolean(result.configMissing) });
-    setDirty(false);
-    setSaving(false);
-    if (result.source === "supabase") {
-      showToast("クラウド保存成功: Supabaseに保存しました。公開LPにも反映されます。");
-    } else {
-      const message = result.error?.message || "原因不明のエラー";
-      showToast(`Supabase保存失敗: ${message}`, "warning");
-    }
-  };
-
-  const reset = async () => {
-    if (!window.confirm("初期状態に戻しますか？")) return;
-    setSaving(true);
-    const result = await resetSiteData();
-    setSiteData(result.data);
-    setDataStatus({ loading: false, source: result.source, error: result.error || null, configMissing: Boolean(result.configMissing) });
-    setDirty(false);
-    setSaving(false);
-    if (result.source === "supabase") {
-      showToast("クラウド保存成功: 初期状態をSupabaseに保存しました。");
-    } else {
-      const message = result.error?.message || "原因不明のエラー";
-      showToast(`Supabase保存失敗: ${message}`, "warning");
-    }
-  };
-
-  const updateImage = (key, file) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = reader.result;
-      update((current) => ({
-        ...current,
-        images: { ...current.images, [key]: key === "gallery" ? [value] : value }
-      }));
-    };
-    reader.readAsDataURL(file);
-  };
-
+function AdminTopBar({ dataStatus, dirty, onSave, onReset }) {
+  const label = dataStatus.configMissing
+    ? "Supabase環境変数未設定"
+    : dataStatus.source === "supabase"
+      ? "クラウド保存中"
+      : "ローカル保存中";
   return (
-    <main className="mx-auto max-w-7xl px-4 pb-20 pt-6 md:px-6">
-      <section className="reveal mb-5 flex flex-col gap-4 rounded-[28px] bg-white/82 p-5 shadow-soft md:flex-row md:items-center md:justify-between">
-        <div>
-          <span className="eyebrow text-suifu-primary">OWNER CONTROL</span>
-          <h1 className="mt-2 font-serif text-3xl font-black md:text-5xl">翠風 更新パネル</h1>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs font-black">
-            <span className={`rounded-full px-3 py-1 ${statusTone}`}>{statusText}</span>
-            {dataStatus.configMissing && <span className="rounded-full bg-suifu-paper px-3 py-1 text-suifu-primary">ローカル保存中</span>}
-            {dirty && <span className="rounded-full bg-suifu-paper px-3 py-1 text-suifu-primary">未保存の変更あり</span>}
-            {saving && <span className="rounded-full bg-suifu-paper px-3 py-1 text-suifu-primary">保存中</span>}
-          </div>
-          {errorMessage && (
-            <p className="mt-3 rounded-2xl bg-suifu-accent/10 px-4 py-3 text-xs font-black leading-relaxed text-suifu-accent">
-              Supabase保存失敗: {errorMessage}
-            </p>
-          )}
-        </div>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <button type="button" onClick={reset} className="rounded-full border border-suifu-accent/20 bg-white px-4 py-3 text-sm font-black text-suifu-accent">初期状態に戻す</button>
-          <a href="/" className="rounded-full border border-suifu-primary/15 bg-white px-4 py-3 text-center text-sm font-black text-suifu-primary">公開ページプレビュー</a>
-          <button type="button" onClick={persist} className="rounded-full bg-suifu-primary px-4 py-3 text-sm font-black text-white">表示内容を保存</button>
-        </div>
-      </section>
-
-      <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
-        <aside className="reveal lg:sticky lg:top-5 lg:self-start">
-          <nav className="grid gap-2 rounded-[24px] bg-white/82 p-3 shadow-card">
-            {[
-              ["ダッシュボード", "#dashboard", Gauge],
-              ["営業状況", "#status", Store],
-              ["限定メニュー", "#limited", Soup],
-              ["混雑/空席", "#crowd-admin", Users],
-              ["お知らせ", "#news-admin", Bell],
-              ["LINE通知", "#line-admin", MessageCircle],
-              ["画像差し替え", "#images-admin", Instagram],
-              ["アクセス", "#access-admin", MapPin]
-            ].map(([label, href, Icon]) => (
-              <a key={href} href={href} className="flex min-h-11 items-center gap-2 rounded-2xl px-3 text-sm font-black text-suifu-primary hover:bg-suifu-paper">
-                <Icon className="h-4 w-4" /> {label}
-              </a>
-            ))}
-          </nav>
-        </aside>
-        <div className="grid gap-5">
-          <AdminSection id="dashboard" label="DASHBOARD" title="本日の状況" icon={Gauge}>
-            <div className="grid gap-3 md:grid-cols-4">
-              <AdminCard label="営業状態" value={siteData.shopStatus.state} />
-              <AdminCard label="限定麺残数" value={`${siteData.limitedMenu.remaining}杯`} />
-              <AdminCard label="混雑状況" value={siteData.crowdStatus.current} />
-              <AdminCard label="保存先" value={statusText} />
-            </div>
-          </AdminSection>
-
-          <AdminSection id="status" label="STATUS" title="営業状況" icon={Store}>
-            <div className="grid gap-3 md:grid-cols-3">
-              <Field label="営業状態" value={siteData.shopStatus.state} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, state: value } }))} />
-              <Field label="開店時間" value={siteData.shopStatus.open} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, open: value } }))} />
-              <Field label="ラストオーダー" value={siteData.shopStatus.lastOrder} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, lastOrder: value } }))} />
-              <Field label="閉店時間" value={siteData.shopStatus.close} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, close: value } }))} />
-              <Field wide label="一言メッセージ" value={siteData.shopStatus.note} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, note: value } }))} />
-            </div>
-          </AdminSection>
-
-          <AdminSection id="limited" label="LIMITED" title="限定メニュー" icon={Soup}>
-            <div className="grid gap-3 md:grid-cols-2">
-              <Field label="商品名" value={siteData.limitedMenu.name} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, name: value } }))} />
-              <Field label="販売状態" value={siteData.limitedMenu.status} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, status: value } }))} />
-              <Field label="残数" type="number" value={siteData.limitedMenu.remaining} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, remaining: Number(value) } }))} />
-              <Field label="総提供数" type="number" value={siteData.limitedMenu.total} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, total: Number(value) } }))} />
-              <Field wide label="商品説明" value={siteData.limitedMenu.message} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, message: value } }))} />
-            </div>
-          </AdminSection>
-
-          <AdminSection id="crowd-admin" label="SEATS" title="混雑/空席状況" icon={Users}>
-            <div className="grid gap-3 md:grid-cols-3">
-              <Field label="現在の混雑状況" value={siteData.crowdStatus.current} onChange={(value) => update((current) => ({ ...current, crowdStatus: { ...current.crowdStatus, current: value } }))} />
-              <Field label="カウンター残席" type="number" value={siteData.crowdStatus.counterSeats} onChange={(value) => update((current) => ({ ...current, crowdStatus: { ...current.crowdStatus, counterSeats: Number(value) } }))} />
-              <Field label="テーブル残席" type="number" value={siteData.crowdStatus.tableSeats} onChange={(value) => update((current) => ({ ...current, crowdStatus: { ...current.crowdStatus, tableSeats: Number(value) } }))} />
-            </div>
-          </AdminSection>
-
-          <AdminSection id="news-admin" label="NEWS" title="お知らせ" icon={Bell}>
-            <div className="grid gap-3">
-              {siteData.news.map((item, index) => (
-                <div key={`${item.title}-${index}`} className="grid gap-3 rounded-2xl bg-suifu-paper p-3 md:grid-cols-3">
-                  <Field label="タイトル" value={item.title} onChange={(value) => update((current) => ({ ...current, news: current.news.map((news, i) => (i === index ? { ...news, title: value } : news)) }))} />
-                  <Field label="カテゴリ" value={item.tag} onChange={(value) => update((current) => ({ ...current, news: current.news.map((news, i) => (i === index ? { ...news, tag: value } : news)) }))} />
-                  <Field label="状態" value={item.status} onChange={(value) => update((current) => ({ ...current, news: current.news.map((news, i) => (i === index ? { ...news, status: value } : news)) }))} />
-                </div>
-              ))}
-            </div>
-          </AdminSection>
-
-          <AdminSection id="line-admin" label="LINE" title="LINE通知" icon={MessageCircle}>
-            <div className="grid gap-3">
-              {siteData.lineMessages.map((message, index) => (
-                <Field key={`${message}-${index}`} label={`通知文 ${index + 1}`} value={message} onChange={(value) => update((current) => ({ ...current, lineMessages: current.lineMessages.map((item, i) => (i === index ? value : item)) }))} />
-              ))}
-            </div>
-          </AdminSection>
-
-          <AdminSection id="images-admin" label="IMAGES" title="画像差し替え" icon={Instagram}>
-            <div className="grid gap-4 md:grid-cols-3">
-              {[
-                ["hero", "メイン画像", heroImage],
-                ["limitedMenu", "限定メニュー", yuzuLimited],
-                ["menu", "お品書き", menuFull],
-                ["exterior", "外観/看板", shopSign],
-                ["interior", "店内", counterWide],
-                ["gallery", "ギャラリー", tableArea]
-              ].map(([key, label, fallback]) => (
-                <article key={key} className="overflow-hidden rounded-2xl bg-white shadow-card">
-                  <img src={imageFor(siteData, key, fallback)} alt={label} className="aspect-[4/3] w-full object-cover" />
-                  <div className="p-4">
-                    <h3 className="font-serif text-xl font-black">{label}</h3>
-                    <input type="file" accept="image/*" onChange={(event) => updateImage(key, event.target.files?.[0])} className="mt-3 block w-full text-xs font-bold" />
-                    <p className="mt-2 text-xs font-bold text-suifu-muted">本フェーズではURL/Base64文字列をsiteData.imagesへ保存します。</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </AdminSection>
-
-          <AdminSection id="access-admin" label="ACCESS" title="アクセス情報" icon={MapPin}>
-            <div className="grid gap-3 md:grid-cols-2">
-              {[
-                ["address", "住所"],
-                ["station", "最寄駅"],
-                ["landmark", "目印"],
-                ["mapUrl", "GoogleマップURL"],
-                ["phone", "電話番号"],
-                ["hours", "営業時間"]
-              ].map(([key, label]) => (
-                <Field key={key} label={label} value={siteData.access[key]} onChange={(value) => update((current) => ({ ...current, access: { ...current.access, [key]: value } }))} />
-              ))}
-            </div>
-          </AdminSection>
-        </div>
+    <div className="sticky top-3 z-20 flex flex-col gap-3 rounded-[24px] bg-white/90 p-4 shadow-card backdrop-blur md:flex-row md:items-center md:justify-between">
+      <div>
+        <p className="text-sm font-black text-suifu-primary">{label}</p>
+        <p className="text-xs font-bold text-suifu-muted">{dirty ? "未保存の変更があります" : "変更は保存済みです"}</p>
+        {dataStatus.error && <p className="mt-1 text-xs font-bold text-suifu-accent">Supabase保存失敗: {dataStatus.error.message}</p>}
       </div>
-
-      {toast && (
-        <div className={`fixed bottom-5 left-1/2 z-50 max-w-[92vw] -translate-x-1/2 rounded-full px-5 py-3 text-sm font-black text-white shadow-2xl ${toast.tone === "warning" ? "bg-suifu-accent" : "bg-suifu-primary"}`}>
-          {toast.message}
-        </div>
-      )}
-    </main>
+      <div className="flex gap-2">
+        <button onClick={onReset} className="inline-flex items-center gap-2 rounded-full border border-suifu-primary/20 px-4 py-2 text-sm font-black text-suifu-primary"><RotateCcw className="h-4 w-4" />リセット</button>
+        <button onClick={onSave} className="inline-flex items-center gap-2 rounded-full bg-suifu-primary px-5 py-2 text-sm font-black text-white"><Save className="h-4 w-4" />保存</button>
+      </div>
+    </div>
   );
 }
 
-function AdminSection({ id, label, title, icon: Icon, children }) {
+function Dashboard({ data, dataStatus }) {
+  const cards = [
+    ["本日の営業状態", data.shopStatus.state, Store],
+    ["限定麺の残数", `${data.limitedMenu.remaining}杯`, Soup],
+    ["現在の混雑状況", data.crowdStatus.current, Gauge],
+    ["今日のお知らせ", `${data.news.filter((item) => item.status !== "下書き").length}件`, Bell],
+    ["LINE通知文", `${data.lineMessages.length}件`, MessageCircle],
+    ["最終更新", data.shopStatus.updatedAt, Clock3]
+  ];
   return (
-    <section id={id} className="reveal is-visible rounded-[28px] bg-white/82 p-5 shadow-soft md:p-6">
-      <header className="mb-5 flex items-center gap-3">
-        <Icon className="h-5 w-5 text-suifu-primary" />
-        <div>
-          <span className="text-[11px] font-black tracking-[0.18em] text-suifu-primary">{label}</span>
-          <h2 className="font-serif text-2xl font-black md:text-3xl">{title}</h2>
+    <AdminSection id="ダッシュボード" title="ダッシュボード" subtitle={dataStatus.source === "supabase" ? "Supabaseと接続しています" : "固定データまたはローカル保存で表示しています"}>
+      <div className="grid gap-3 md:grid-cols-3">
+        {cards.map(([label, value, Icon]) => (
+          <div key={label} className="rounded-2xl bg-suifu-paper p-4">
+            <Icon className="h-5 w-5 text-suifu-primary" />
+            <p className="mt-3 text-xs font-black text-suifu-muted">{label}</p>
+            <strong className="mt-1 block font-serif text-2xl">{value}</strong>
+          </div>
+        ))}
+      </div>
+    </AdminSection>
+  );
+}
+
+function StatusEditor({ data, update }) {
+  const status = data.shopStatus;
+  return (
+    <AdminSection id="営業状況" title="営業状況編集" subtitle="公開LPの営業カードに反映されます。">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Select label="営業状態" value={status.state} options={["営業中", "準備中", "本日定休日", "売り切れ終了"]} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, state: value } }))} />
+        <Field label="開店時間" value={status.open} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, open: value } }))} />
+        <Field label="L.O." value={status.lastOrder} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, lastOrder: value } }))} />
+        <Field label="閉店時間" value={status.close} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, close: value } }))} />
+        <Textarea label="一言メッセージ" value={status.note} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, note: value } }))} className="md:col-span-4" />
+      </div>
+    </AdminSection>
+  );
+}
+
+function LimitedMenuEditor({ data, update }) {
+  const menu = data.limitedMenu;
+  return (
+    <AdminSection id="限定メニュー" title="限定メニュー管理" subtitle="残数や販売状態を変更できます。">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Field label="商品名" value={menu.name} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, name: value } }))} />
+        <Field label="残数" type="number" value={menu.remaining} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, remaining: Number(value) } }))} />
+        <Field label="総提供数" type="number" value={menu.total} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, total: Number(value) } }))} />
+        <Select label="販売状態" value={menu.status} options={["販売中", "残りわずか", "完売"]} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, status: value } }))} />
+        <Textarea label="商品説明" value={menu.message} onChange={(value) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, message: value } }))} className="md:col-span-3" />
+        <label className="rounded-2xl bg-suifu-paper p-4 text-sm font-black">
+          <input type="checkbox" checked={menu.visible} onChange={(event) => update((current) => ({ ...current, limitedMenu: { ...current.limitedMenu, visible: event.target.checked } }))} className="mr-2" />
+          公開LPに表示
+        </label>
+      </div>
+    </AdminSection>
+  );
+}
+
+function CrowdEditor({ data, update }) {
+  return (
+    <AdminSection id="混雑/空席" title="混雑/空席状況" subtitle="来店前の不安を減らすための表示です。">
+      <div className="grid gap-3 md:grid-cols-3">
+        <Select label="現在の混雑状況" value={data.crowdStatus.current} options={["入りやすい", "やや混雑", "混雑", "満席"]} onChange={(value) => update((current) => ({ ...current, crowdStatus: { ...current.crowdStatus, current: value } }))} />
+        <Field label="カウンター残席" type="number" value={data.crowdStatus.counterSeats} onChange={(value) => update((current) => ({ ...current, crowdStatus: { ...current.crowdStatus, counterSeats: Number(value) } }))} />
+        <Field label="テーブル残席" type="number" value={data.crowdStatus.tableSeats} onChange={(value) => update((current) => ({ ...current, crowdStatus: { ...current.crowdStatus, tableSeats: Number(value) } }))} />
+        {data.crowdStatus.slots.map((slot, index) => (
+          <Field key={slot.time} label={`${slot.time} 混雑度`} type="number" value={slot.level} onChange={(value) => update((current) => {
+            const slots = current.crowdStatus.slots.map((item, slotIndex) => slotIndex === index ? { ...item, level: Number(value) } : item);
+            return { ...current, crowdStatus: { ...current.crowdStatus, slots } };
+          })} />
+        ))}
+      </div>
+    </AdminSection>
+  );
+}
+
+function NewsEditor({ data, update }) {
+  function updateNews(index, patch) {
+    update((current) => {
+      const news = current.news.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item);
+      return { ...current, news };
+    });
+  }
+  return (
+    <AdminSection id="お知らせ" title="お知らせ管理" subtitle="公開、下書き、本文を編集できます。">
+      <div className="grid gap-4">
+        {data.news.map((item, index) => (
+          <div key={`${item.date}-${index}`} className="grid gap-3 rounded-2xl bg-suifu-paper p-4 md:grid-cols-4">
+            <Field label="カテゴリ" value={item.tag} onChange={(value) => updateNews(index, { tag: value })} />
+            <Field label="タイトル" value={item.title} onChange={(value) => updateNews(index, { title: value })} />
+            <Field label="投稿日" value={item.date} onChange={(value) => updateNews(index, { date: value })} />
+            <Select label="状態" value={item.status} options={["公開中", "下書き"]} onChange={(value) => updateNews(index, { status: value })} />
+            <Textarea label="本文" value={item.text} onChange={(value) => updateNews(index, { text: value })} className="md:col-span-4" />
+          </div>
+        ))}
+        <button onClick={() => update((current) => ({ ...current, news: [{ tag: "お知らせ", title: "新しいお知らせ", text: "本文を入力してください。", status: "下書き", date: "2026.06.05" }, ...current.news] }))} className="rounded-full border border-suifu-primary/20 px-4 py-3 text-sm font-black text-suifu-primary">新規追加</button>
+      </div>
+    </AdminSection>
+  );
+}
+
+function LinePreview({ data, update }) {
+  return (
+    <AdminSection id="LINE通知" title="LINE通知プレビュー" subtitle="スマホ通知の文面を編集できます。">
+      <div className="grid gap-4 md:grid-cols-[1fr_320px]">
+        <div className="grid gap-3">
+          {data.lineMessages.map((message, index) => (
+            <Field key={`${message}-${index}`} label={`通知文 ${index + 1}`} value={message} onChange={(value) => update((current) => {
+              const lineMessages = current.lineMessages.map((item, itemIndex) => itemIndex === index ? value : item);
+              return { ...current, lineMessages };
+            })} />
+          ))}
         </div>
-      </header>
+        <div className="rounded-[28px] bg-[#1e1f24] p-4 text-white">
+          <div className="rounded-[22px] bg-[#8ecf7e] p-4">
+            {data.lineMessages.map((message, index) => (
+              <p key={`${message}-${index}`} className="mb-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-suifu-ink">{message}</p>
+            ))}
+          </div>
+        </div>
+      </div>
+    </AdminSection>
+  );
+}
+
+function ImageSwapManager({ data, update }) {
+  const keys = ["hero", "limitedMenu", "menu", "exterior", "interior"];
+  function previewFile(key, file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => update((current) => ({ ...current, images: { ...current.images, [key]: reader.result } }));
+    reader.readAsDataURL(file);
+  }
+  return (
+    <AdminSection id="SNS素材" title="画像差し替え" subtitle="保存済み画像も公開LPに反映されます。">
+      <div className="grid gap-4 md:grid-cols-5">
+        {keys.map((key) => (
+          <label key={key} className="rounded-2xl bg-suifu-paper p-3 text-sm font-black">
+            <SafeImage src={imageFor(data, key)} fallback={fallbackImages[key]} alt={data.mediaLabels[key]} className="aspect-square w-full rounded-xl object-cover" />
+            <span className="mt-2 flex items-center gap-2"><ImageIcon className="h-4 w-4" />{data.mediaLabels[key]}</span>
+            <input type="file" accept="image/*" className="mt-2 w-full text-xs" onChange={(event) => previewFile(key, event.target.files?.[0])} />
+          </label>
+        ))}
+      </div>
+    </AdminSection>
+  );
+}
+
+function AccessEditor({ data, update }) {
+  const access = data.access;
+  return (
+    <AdminSection id="アクセス" title="アクセス情報" subtitle="住所、地図、電話番号を編集できます。">
+      <div className="grid gap-3 md:grid-cols-2">
+        {[
+          ["住所", "address"],
+          ["最寄駅", "station"],
+          ["目印", "landmark"],
+          ["GoogleマップURL", "mapUrl"],
+          ["電話番号", "phone"],
+          ["営業時間", "hours"]
+        ].map(([label, key]) => (
+          <Field key={key} label={label} value={access[key]} onChange={(value) => update((current) => ({ ...current, access: { ...current.access, [key]: value } }))} />
+        ))}
+      </div>
+    </AdminSection>
+  );
+}
+
+function AdminSection({ id, title, subtitle, children }) {
+  return (
+    <section id={id} className="rounded-[28px] bg-white/90 p-5 shadow-card md:p-6">
+      <div className="mb-5">
+        <h2 className="font-serif text-2xl font-black">{title}</h2>
+        <p className="mt-1 text-sm font-bold text-suifu-muted">{subtitle}</p>
+      </div>
       {children}
     </section>
   );
 }
 
-function AdminCard({ label, value }) {
+function Field({ label, value, onChange, type = "text", className = "" }) {
   return (
-    <div className="rounded-2xl bg-suifu-paper p-4">
-      <span className="text-xs font-black text-suifu-muted">{label}</span>
-      <strong className="mt-2 block font-serif text-2xl">{value}</strong>
-    </div>
+    <label className={`block text-sm font-black ${className}`}>
+      <span className="mb-1 block text-suifu-muted">{label}</span>
+      <input type={type} value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="w-full rounded-2xl border border-suifu-primary/15 bg-white px-4 py-3 font-bold outline-none focus:border-suifu-primary" />
+    </label>
   );
 }
 
-function Field({ label, value, onChange, type = "text", wide = false }) {
+function Textarea({ label, value, onChange, className = "" }) {
   return (
-    <label className={wide ? "md:col-span-2" : ""}>
-      <span className="mb-1 block text-xs font-black text-suifu-muted">{label}</span>
-      <input
-        type={type}
-        value={value ?? ""}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-12 w-full rounded-2xl border border-suifu-primary/12 bg-white px-4 text-sm font-black outline-none focus:border-suifu-primary"
-      />
+    <label className={`block text-sm font-black ${className}`}>
+      <span className="mb-1 block text-suifu-muted">{label}</span>
+      <textarea value={value ?? ""} onChange={(event) => onChange(event.target.value)} rows={4} className="w-full rounded-2xl border border-suifu-primary/15 bg-white px-4 py-3 font-bold outline-none focus:border-suifu-primary" />
     </label>
+  );
+}
+
+function Select({ label, value, options, onChange }) {
+  return (
+    <label className="block text-sm font-black">
+      <span className="mb-1 block text-suifu-muted">{label}</span>
+      <select value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="w-full rounded-2xl border border-suifu-primary/15 bg-white px-4 py-3 font-bold outline-none focus:border-suifu-primary">
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function SectionTitle({ label, title, light = false, className = "" }) {
+  return (
+    <div className={className}>
+      <span className={`eyebrow ${light ? "text-suifu-bamboo" : "text-suifu-primary"}`}>{label}</span>
+      <h2 className={`mt-2 font-serif text-3xl font-black md:text-5xl ${light ? "text-white" : "text-suifu-ink"}`}>{title}</h2>
+    </div>
   );
 }
 
 function Info({ label, value, dark = false }) {
   return (
-    <div className={dark ? "rounded-2xl bg-suifu-paper p-4" : ""}>
-      <span className="block text-xs font-black tracking-[0.12em] opacity-70">{label}</span>
-      <strong className="mt-1 block font-serif text-2xl font-black">{value}</strong>
-    </div>
-  );
-}
-
-function SectionTitle({ label, title, light = false }) {
-  return (
-    <div className="reveal">
-      <span className={`eyebrow ${light ? "text-white/70" : "text-suifu-primary"}`}>{label}</span>
-      <h2 className={`mt-2 font-serif text-3xl font-black md:text-5xl ${light ? "text-white" : "text-suifu-ink"}`}>{title}</h2>
+    <div>
+      <span className={`block text-xs font-black ${dark ? "text-suifu-muted" : "text-white/70"}`}>{label}</span>
+      <strong className={`mt-1 block font-serif text-2xl font-black ${dark ? "text-suifu-ink" : "text-white"}`}>{value}</strong>
     </div>
   );
 }
 
 function AmbientLayer() {
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 bg-[rgb(var(--color-paper))]">
-      <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: "radial-gradient(rgb(var(--color-primary)) 0.7px, transparent 0.7px)", backgroundSize: "18px 18px" }} />
-      <div className="absolute -right-20 top-0 h-72 w-72 rounded-full bg-suifu-bamboo/50 blur-3xl" />
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <div className="bamboo-grid absolute inset-0 opacity-50" />
+      <div className="bamboo-stem left-[-5vw] opacity-25" />
+      <div className="bamboo-stem right-[-7vw] opacity-20" />
+      <div className="noise-layer" />
+      <div className="city-humidity" />
     </div>
   );
-}
-
-function StickyCta() {
-  const items = [
-    ["LINE", "#line", MessageCircle, "bg-[#06c755]"],
-    ["営業", "#today", Clock3, "bg-suifu-accent"],
-    ["空席", "#crowd", Users, "bg-suifu-accent"],
-    ["地図", "#access", MapPin, "bg-suifu-accent"],
-    ["電話", "tel:0600000000", Phone, "bg-suifu-accent"]
-  ];
-  return (
-    <aside className="fixed bottom-3 left-3 right-3 z-40 grid grid-cols-5 gap-1 rounded-[20px] bg-suifu-ink/92 p-2 shadow-2xl md:hidden">
-      {items.map(([label, href, Icon, color]) => (
-        <a key={label} href={href} className={`grid min-h-12 place-items-center rounded-2xl text-[10px] font-black text-white ${color}`}>
-          <Icon className="h-4 w-4" />
-          {label}
-        </a>
-      ))}
-    </aside>
-  );
-}
-
-function useUnsavedChangesWarning(enabled) {
-  useEffect(() => {
-    if (!enabled) return undefined;
-    const handler = (event) => {
-      event.preventDefault();
-      event.returnValue = "";
-      return "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [enabled]);
-}
-
-function useReveal(deps = []) {
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12 }
-    );
-    document.querySelectorAll(".reveal:not(.is-visible)").forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
-  }, deps);
 }
 
 createRoot(document.getElementById("root")).render(<App />);
