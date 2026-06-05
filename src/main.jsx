@@ -30,6 +30,7 @@ import { isSupabaseConfigured } from "./lib/supabaseClient.js";
 
 import heroImage from "../assets/works_ramen_cm_05_thumb.png";
 import heroFastImage from "../assets/suifu_hero_fast.webp";
+import heroFoodImage from "../assets/suifu_hero_food.webp";
 import movieA from "../assets/works_ramen_cm_05.mp4";
 import menuFull from "../assets/suifu_menu_full.png";
 import yuzuLimited from "../assets/suifu_yuzu_limited.png";
@@ -54,7 +55,7 @@ const themeStyle = {
 };
 
 const fallbackImages = {
-  hero: heroFastImage,
+  hero: heroFoodImage,
   limitedMenu: yuzuLimited,
   menu: menuFull,
   exterior: shopSign,
@@ -222,39 +223,48 @@ function Header({ data }) {
 
 function Hero({ data }) {
   return (
-    <section id="top" className="relative mx-auto grid max-w-6xl gap-5 px-4 pb-8 pt-5 md:min-h-[760px] md:grid-cols-[0.86fr_1.14fr] md:items-center md:px-6 md:pb-16 md:pt-10">
+    <section id="top" className="relative mx-auto grid max-w-6xl gap-5 px-4 pb-8 pt-4 md:min-h-[760px] md:grid-cols-[0.8fr_1.2fr] md:items-center md:px-6 md:pb-16 md:pt-10">
       <div className="absolute inset-x-4 top-0 -z-0 h-[80%] rounded-[30px] border border-suifu-primary/10 bg-white/40 shadow-insetLine md:inset-x-6 md:h-[78%] md:rounded-[36px]" />
-      <div className="reveal relative z-10 flex flex-col justify-center md:pr-2">
+      <div className="reveal relative z-10 order-2 flex flex-col justify-center md:order-1 md:pr-2">
         <span className="eyebrow text-suifu-primary">淡麗塩 / 季節限定</span>
-        <h1 className="mt-3 font-serif text-[3rem] font-black leading-[1.02] md:mt-4 md:text-7xl">
+        <h1 className="mt-3 font-serif text-[2.65rem] font-black leading-[1.04] md:mt-4 md:text-7xl">
           柚子薫る、<br />澄みわたる<br />塩らぁ麺。
         </h1>
         <p className="mt-4 max-w-xl text-sm font-bold leading-[1.95] text-suifu-muted md:mt-5 md:text-base">
           鶏の旨みを引き出した澄んだスープに、国産柚子の香りを重ねました。軽やかで、最後まで飲み干したくなる季節の一杯です。
         </p>
-        <div className="mt-6 flex flex-wrap gap-3 md:mt-7">
-          <a href="#line" className="rounded-full bg-suifu-primary px-6 py-3 text-sm font-black text-white shadow-card">LINEで席確認</a>
-          <a href="#menu" className="rounded-full border border-suifu-primary/20 bg-white/82 px-6 py-3 text-sm font-black text-suifu-primary shadow-insetLine">お品書き</a>
+        <div className="mt-5 grid gap-2 sm:grid-cols-3 md:mt-7">
+          <a href="#line" className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#06c755] px-5 text-sm font-black text-white shadow-card">LINEで席確認</a>
+          <a href="#access" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-suifu-primary px-5 text-sm font-black text-white shadow-card">
+            <MapPin className="h-4 w-4" /> 地図で行く
+          </a>
+          <a href="#limited" className="inline-flex min-h-12 items-center justify-center rounded-full border border-suifu-primary/20 bg-white/86 px-5 text-sm font-black text-suifu-primary shadow-insetLine">残数を見る</a>
         </div>
       </div>
-      <div className="reveal relative z-10 md:pl-2">
+      <div className="reveal relative z-10 order-1 md:order-2 md:pl-2">
         <div className="relative overflow-hidden rounded-[30px] bg-white shadow-soft md:rounded-[36px]">
-          <SafeImage src={imageFor(data, "hero")} fallback={heroImage} alt={`${data.brand.name}のらぁ麺`} className="aspect-square w-full object-cover" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-suifu-night/24 via-transparent to-white/6" />
+          <SafeImage src={imageFor(data, "hero")} fallback={heroFoodImage} alt={`${data.brand.name}のらぁ麺`} className="aspect-[1.06/1] w-full object-cover saturate-[1.08] contrast-[1.04] md:aspect-square" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_46%_42%,rgba(255,255,255,0.20),transparent_24%),linear-gradient(0deg,rgba(24,27,20,0.34),transparent_48%)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/18 to-transparent" />
           <div className="steam steam-a" />
           <div className="steam steam-b" />
           <div className="steam steam-c" />
-          <div className="absolute bottom-3 left-3 right-3 rounded-[22px] bg-white/92 p-4 shadow-card backdrop-blur md:bottom-5 md:left-5 md:right-auto md:min-w-[240px] md:p-5">
+          <div className="absolute left-3 right-3 top-3 grid grid-cols-3 gap-2 md:left-5 md:right-5 md:top-5">
+            <HeroBadge label="営業" value={data.shopStatus.state} />
+            <HeroBadge label="限定" value={`${data.limitedMenu.remaining}杯`} accent />
+            <HeroBadge label="混雑" value={data.crowdStatus.current} />
+          </div>
+          <div className="absolute bottom-3 left-3 max-w-[74%] rounded-[20px] bg-white/94 p-3 shadow-card backdrop-blur md:bottom-5 md:left-5 md:max-w-none md:min-w-[240px] md:p-5">
             <span className="text-xs font-black text-suifu-primary">{data.limitedMenu.status}</span>
-            <strong className="mt-1 block font-serif text-2xl md:text-3xl">{data.limitedMenu.name}</strong>
+            <strong className="mt-1 block font-serif text-xl md:text-3xl">{data.limitedMenu.name}</strong>
             <span className="mt-1 block text-sm font-black text-suifu-accent">本日残り{data.limitedMenu.remaining}杯</span>
           </div>
         </div>
       </div>
-      <div className="reveal col-span-full grid gap-3 rounded-[24px] border border-suifu-primary/10 bg-white/82 p-3 shadow-card md:hidden">
+      <div className="reveal order-3 col-span-full grid gap-3 rounded-[24px] border border-suifu-primary/10 bg-white/82 p-3 shadow-card md:hidden">
         <div className="grid grid-cols-3 gap-2 text-center">
           <MiniStatus label="営業" value={data.shopStatus.state} />
-          <MiniStatus label="L.O." value={data.shopStatus.lastOrder} />
+          <MiniStatus label="混雑" value={data.crowdStatus.current} />
           <MiniStatus label="限定" value={`${data.limitedMenu.remaining}杯`} />
         </div>
       </div>
@@ -339,6 +349,15 @@ function MiniStatus({ label, value }) {
   );
 }
 
+function HeroBadge({ label, value, accent = false }) {
+  return (
+    <div className={`rounded-2xl px-2 py-2 text-center shadow-card backdrop-blur ${accent ? "bg-suifu-accent/94 text-white" : "bg-white/92 text-suifu-primary"}`}>
+      <span className={`block text-[10px] font-black ${accent ? "text-white/76" : "text-suifu-muted"}`}>{label}</span>
+      <strong className="mt-0.5 block truncate text-sm font-black md:text-base">{value}</strong>
+    </div>
+  );
+}
+
 function Concept({ data }) {
   return (
     <section id="concept" className="mx-auto grid max-w-6xl gap-6 px-4 py-12 md:grid-cols-[0.9fr_1.1fr] md:items-center md:px-6 md:py-16">
@@ -357,7 +376,7 @@ function LimitedMenu({ data }) {
   const item = data.limitedMenu;
   if (!item.visible) return null;
   return (
-    <section className="mx-auto max-w-6xl px-4 py-10 md:px-6 md:py-14">
+    <section id="limited" className="mx-auto max-w-6xl px-4 py-10 md:px-6 md:py-14">
       <div className="reveal grid overflow-hidden rounded-[30px] bg-suifu-primary text-white shadow-soft md:grid-cols-[1.04fr_0.96fr]">
         <SafeImage src={imageFor(data, "limitedMenu")} fallback={yuzuLimited} alt={item.name} className="h-full min-h-[320px] w-full object-cover" />
         <div className="p-6 md:p-10">
