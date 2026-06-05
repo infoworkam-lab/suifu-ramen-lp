@@ -173,6 +173,7 @@ function PublicLp({ siteData }) {
       <Header data={data} />
       <main>
         <Hero data={data} />
+        <Movie />
         <TodayStatus data={data} />
         <CrowdStatus data={data} />
         <News data={data} />
@@ -180,7 +181,7 @@ function PublicLp({ siteData }) {
         <LimitedMenu data={data} />
         <LineSection data={data} />
         <Menu data={data} />
-        <Movie />
+        <CraftScenes data={data} />
         <Gallery data={data} />
         <Access data={data} />
       </main>
@@ -403,9 +404,82 @@ function Menu({ data }) {
 
 function Movie() {
   return (
-    <section className="mx-auto max-w-6xl px-4 py-12 md:px-6">
-      <SectionTitle label="MOVIE" title="湯気まで伝わる、初夏の一杯。" />
-      <video src={movieA} poster={heroImage} className="reveal mt-5 aspect-video w-full rounded-[28px] bg-suifu-night object-cover shadow-soft" controls playsInline preload="metadata" />
+    <section className="mx-auto max-w-6xl px-4 pb-6 pt-2 md:px-6 md:pb-10 md:pt-0">
+      <div className="reveal relative overflow-hidden rounded-[30px] bg-suifu-night shadow-soft md:rounded-[36px]">
+        <video
+          src={movieA}
+          poster={heroFastImage}
+          className="aspect-[4/5] w-full object-cover md:aspect-[16/7]"
+          muted
+          autoPlay
+          loop
+          playsInline
+          preload="metadata"
+          aria-label="湯気まで伝わる、初夏の一杯。"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-suifu-night/78 via-suifu-night/10 to-transparent" />
+        <div className="steam steam-a" />
+        <div className="steam steam-b" />
+        <div className="absolute bottom-5 left-5 right-5 text-white md:bottom-8 md:left-8">
+          <span className="eyebrow text-white/72">MOVIE</span>
+          <h2 className="mt-2 font-serif text-3xl font-black leading-tight md:text-5xl">湯気まで伝わる、初夏の一杯。</h2>
+          <p className="mt-3 max-w-xl text-sm font-bold leading-relaxed text-white/78 md:text-base">
+            香り、光、スープの揺れ。来店前から一杯の温度が伝わるように。
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CraftScenes({ data }) {
+  const scenes = [
+    ["steam-pot", "仕込み", "澄んだスープに、鶏の旨みを重ねる。"],
+    ["noodle-lift", "麺上げ", "細麺のしなやかさを、最後の一口まで。"],
+    ["noren", "暖簾", "木の看板と黒い暖簾が目印です。"]
+  ];
+  const instaItems = [
+    { image: imageFor(data, "limitedMenu"), fallback: yuzuLimited, title: "季節限定 柚子塩らぁ麺", meta: "本日も販売中" },
+    { image: imageFor(data, "interior"), fallback: counterWide, title: "昼下がりのカウンター", meta: "落ち着いて過ごせる店内" },
+    { image: imageFor(data, "exterior"), fallback: shopSign, title: "木の看板が目印", meta: "初めての方も迷わずに" },
+    { image: imageFor(data, "gallery"), fallback: tableArea, title: "テーブル席もご用意", meta: "お一人でもご家族でも" }
+  ];
+
+  return (
+    <section id="atmosphere" className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
+      <div className="reveal">
+        <SectionTitle label="ATMOSPHERE" title="一杯の前に、店の空気まで。" />
+      </div>
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        {scenes.map(([style, title, text]) => (
+          <article key={title} className={`reveal craft-card ${style}`}>
+            <div className="craft-visual">
+              <div className="craft-shadow" />
+              <div className="craft-line" />
+              <div className="craft-steam" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 z-10 p-5 text-white">
+              <span className="eyebrow text-white/60">CRAFT</span>
+              <h3 className="mt-2 font-serif text-3xl font-black">{title}</h3>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-white/72">{text}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {instaItems.map((item, index) => (
+          <article key={item.title} className="reveal group overflow-hidden rounded-[22px] border border-white/70 bg-white/78 shadow-card">
+            <div className={`relative aspect-square overflow-hidden insta-scene scene-${index}`}>
+              <SafeImage src={item.image} fallback={item.fallback} alt={item.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-suifu-ink/55 via-transparent to-transparent" />
+            </div>
+            <div className="p-3">
+              <h3 className="text-sm font-black leading-snug">{item.title}</h3>
+              <p className="mt-1 text-xs font-bold text-suifu-muted">{item.meta}</p>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
