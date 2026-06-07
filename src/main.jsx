@@ -166,31 +166,503 @@ function App() {
   return <PublicLp siteData={siteData} />;
 }
 
+function cleanText(value, fallback) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  if (!trimmed || /縺|繧|譛|螟|蜀|蝟|讌|豺|髮|譚|鄙||荳|蜊|驥|邱|繝|譁|蠎/.test(trimmed)) return fallback;
+  return trimmed;
+}
+
+function publicCopy(data) {
+  const access = data.access || {};
+  const status = data.shopStatus || {};
+  const crowd = data.crowdStatus || {};
+  const limited = data.limitedMenu || {};
+  return {
+    brandName: "らぁ麺 翠風",
+    brandShort: "翠風",
+    kana: "らぁめん すいふう",
+    roman: "SUIFU",
+    status: cleanText(status.state, "営業中"),
+    open: cleanText(status.open, "11:00"),
+    close: cleanText(status.close, "22:00"),
+    lastOrder: cleanText(status.lastOrder, "21:30"),
+    hours: cleanText(access.hours, "11:00-22:00 (L.O.21:30)"),
+    station: cleanText(access.station, "JR新福島駅 徒歩3分"),
+    address: cleanText(access.address, "大阪市福島区福島2丁目 周辺"),
+    landmark: cleanText(access.landmark, "木の看板と深い紺の暖簾が目印です。"),
+    mapUrl: typeof access.mapUrl === "string" && access.mapUrl.startsWith("http") ? access.mapUrl : "https://www.google.com/maps/search/?api=1&query=大阪市福島区福島2丁目",
+    phone: cleanText(access.phone, "06-0000-0000"),
+    limitedName: cleanText(limited.name, "季節限定 柚子塩らぁ麺"),
+    limitedMessage: cleanText(limited.message, "国産柚子の香りを重ねた、初夏だけの塩らぁ麺。鶏の旨みを引き立てる、すっきりとした余韻をお楽しみください。"),
+    limitedStatus: cleanText(limited.status, "販売中"),
+    limitedRemaining: Number(limited.remaining) || 12,
+    limitedTotal: Number(limited.total) || 30,
+    crowdCurrent: cleanText(crowd.current, "やや混雑"),
+    counterSeats: Number(crowd.counterSeats) || 3,
+    tableSeats: Number(crowd.tableSeats) || 1
+  };
+}
+
+const salesMenuItems = [
+  ["淡麗塩らぁ麺", "980円", "鶏の旨みと魚介の香りを澄ませた、翠風の基本となる一杯。", heroFoodImage],
+  ["特製淡麗塩らぁ麺", "1,280円", "味玉、鶏チャーシュー、穂先メンマを添えた満足感のある定番。", heroFastImage],
+  ["鶏白湯らぁ麺", "1,050円", "濃厚でありながら後味は軽く。夜にも選びやすいまろやかな白湯。", heroImage],
+  ["季節の冷やし塩そば", "1,180円", "涼やかな出汁と香味野菜で仕上げる、季節替わりの限定麺。", yuzuLimited]
+];
+
 function PublicLp({ siteData }) {
   const data = safeData(siteData);
   return (
     <div className="min-h-screen overflow-x-hidden bg-suifu-paper text-suifu-ink antialiased" style={themeStyle}>
       <AmbientLayer />
-      <Header data={data} />
+      <SalesHeader data={data} />
       <main>
-        <Hero data={data} />
-        <LpValueStrip data={data} />
-        <Movie />
-        <TodayStatus data={data} />
-        <CrowdStatus data={data} />
-        <News data={data} />
-        <Concept data={data} />
-        <LimitedMenu data={data} />
-        <LineSection data={data} />
-        <Menu data={data} />
-        <CraftScenes data={data} />
-        <CustomerVoices />
-        <Gallery data={data} />
-        <Access data={data} />
-        <FinalReserve data={data} />
+        <SalesHero data={data} />
+        <SalesTodayStatus data={data} />
+        <SalesConcept data={data} />
+        <SalesLimitedMenu data={data} />
+        <SalesMenu data={data} />
+        <SalesMovie />
+        <SalesGallery data={data} />
+        <SalesVoices />
+        <SalesStoreInfo data={data} />
+        <SalesAccess data={data} />
+        <SalesInstagram data={data} />
+        <SalesFinalCta data={data} />
       </main>
-      <StickyCta data={data} />
+      <SalesStickyCta data={data} />
     </div>
+  );
+}
+
+function SalesHeader({ data }) {
+  const copy = publicCopy(data);
+  return (
+    <header className="sticky top-0 z-30 border-b border-suifu-primary/10 bg-suifu-paper/92 backdrop-blur-md">
+      <div className="mx-auto flex max-w-[1280px] items-center justify-between px-4 py-3 md:px-8 md:py-4">
+        <a href="/" className="flex items-center gap-3" aria-label={`${copy.brandName} トップへ`}>
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-suifu-primary font-serif text-xl font-black text-white shadow-card">翠</span>
+          <span>
+            <span className="block text-[10px] font-bold tracking-[0.18em] text-suifu-muted">{copy.kana}</span>
+            <strong className="block font-serif text-2xl leading-none md:text-3xl">{copy.brandShort}</strong>
+            <span className="block text-[10px] font-bold tracking-[0.4em] text-suifu-muted">{copy.roman}</span>
+          </span>
+        </a>
+        <nav className="hidden items-center gap-1 rounded-full border border-suifu-primary/15 bg-white/75 p-1.5 shadow-insetLine backdrop-blur md:flex">
+          {[
+            ["こだわり", "#concept"],
+            ["メニュー", "#menu"],
+            ["CM映像", "#movie"],
+            ["店内", "#gallery"],
+            ["アクセス", "#access"]
+          ].map(([label, href]) => (
+            <a key={href} href={href} className="rounded-full px-4 py-2 text-sm font-black text-suifu-primary transition hover:bg-suifu-primary/10">
+              {label}
+            </a>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+function SalesHero({ data }) {
+  const copy = publicCopy(data);
+  return (
+    <section id="top" className="relative mx-auto grid max-w-[1280px] gap-5 px-4 pb-8 pt-4 md:min-h-[760px] md:grid-cols-[0.92fr_1.08fr] md:items-center md:px-8 md:pb-16 md:pt-8 xl:min-h-[820px]">
+      <div className="absolute inset-x-4 top-2 -z-0 h-[76%] rounded-[30px] border border-suifu-primary/10 bg-white/45 shadow-insetLine md:inset-x-8 md:top-6 md:h-[72%] md:rounded-[40px]" />
+      <div className="reveal relative z-10 order-2 flex flex-col justify-center md:order-1">
+        <span className="eyebrow text-suifu-primary">淡麗塩 / 初夏 / 大阪・福島</span>
+        <h1 className="mt-3 font-serif text-[clamp(2.8rem,8vw,4.9rem)] font-black leading-[1.04] md:mt-5">
+          淡麗塩、<br />竹影に香る一杯。
+        </h1>
+        <p className="mt-4 max-w-xl text-[15px] font-bold leading-[1.95] text-suifu-muted md:mt-5 md:text-base">
+          透き通るスープに、鶏の旨みと柚子の香りを重ねて。昼に重くならず、夜にもすっと入る、毎日食べたくなる塩らぁ麺です。
+        </p>
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 md:mt-7">
+          <SalesHeroFact label="営業時間" value={copy.hours} />
+          <SalesHeroFact label="最寄り" value={copy.station} />
+          <SalesHeroFact label="価格帯" value="980円-" />
+          <SalesHeroFact label="評価" value="4.7 / 5.0" />
+        </div>
+        <div className="mt-5 grid gap-2 sm:grid-cols-3 md:mt-7">
+          <a href="#menu" className="inline-flex min-h-12 items-center justify-center rounded-full bg-suifu-primary px-5 text-sm font-black text-white shadow-card">メニューを見る</a>
+          <a href={copy.mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-black text-suifu-primary shadow-card">
+            <MapPin className="h-4 w-4" /> Googleマップで行く
+          </a>
+          <a href={`tel:${copy.phone}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-suifu-primary/20 bg-white/86 px-5 text-sm font-black text-suifu-primary shadow-insetLine">
+            <Phone className="h-4 w-4" /> 電話する
+          </a>
+        </div>
+      </div>
+      <div className="reveal relative z-10 order-1 md:order-2">
+        <div className="relative overflow-hidden rounded-[30px] bg-white shadow-soft md:rounded-[38px]">
+          <SafeImage src={imageFor(data, "hero")} fallback={heroFoodImage} alt={`${copy.brandName}の淡麗塩らぁ麺`} className="aspect-[1.02/1] w-full object-cover saturate-[1.12] contrast-[1.04]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_48%_42%,rgba(255,255,255,0.24),transparent_24%),linear-gradient(0deg,rgba(24,27,20,0.34),transparent_46%)]" />
+          <div className="steam steam-a" />
+          <div className="steam steam-b" />
+          <div className="steam steam-c" />
+          <div className="absolute left-3 right-3 top-3 grid grid-cols-3 gap-2 md:left-5 md:right-5 md:top-5">
+            <HeroBadge label="営業" value={copy.status} />
+            <HeroBadge label="限定" value={`残り${copy.limitedRemaining}杯`} accent />
+            <HeroBadge label="混雑" value={copy.crowdCurrent} />
+          </div>
+          <div className="absolute bottom-3 left-3 right-3 rounded-[22px] bg-white/94 p-4 shadow-card backdrop-blur md:bottom-5 md:left-5 md:right-auto md:min-w-[280px] md:p-5">
+            <span className="text-xs font-black tracking-[0.16em] text-suifu-primary">本日のおすすめ</span>
+            <strong className="mt-1 block font-serif text-2xl md:text-3xl">{copy.limitedName}</strong>
+            <span className="mt-1 block text-sm font-black text-suifu-accent">売り切れ次第終了</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SalesHeroFact({ label, value }) {
+  return (
+    <div className="rounded-[18px] border border-suifu-primary/10 bg-white/82 px-3 py-3 shadow-insetLine">
+      <span className="block text-[10px] font-black tracking-[0.12em] text-suifu-muted">{label}</span>
+      <strong className="mt-1 block text-[13px] font-black leading-snug text-suifu-primary">{value}</strong>
+    </div>
+  );
+}
+
+function SalesTodayStatus({ data }) {
+  const copy = publicCopy(data);
+  const slots = data.crowdStatus?.slots?.length ? data.crowdStatus.slots : [
+    { time: "18:00", level: 70, label: "混雑" },
+    { time: "18:30", level: 58, label: "やや混雑" },
+    { time: "19:00", level: 76, label: "混雑" },
+    { time: "19:30", level: 62, label: "やや混雑" }
+  ];
+  return (
+    <section id="today" className="mx-auto max-w-[1280px] px-4 py-5 md:px-8 md:py-8">
+      <div className="reveal grid gap-4 rounded-[30px] border border-suifu-primary/10 bg-white/88 p-4 shadow-card md:grid-cols-[0.86fr_1.14fr] md:p-6">
+        <div className="rounded-[24px] bg-suifu-primary p-5 text-white">
+          <span className="eyebrow text-white/70">TODAY</span>
+          <h2 className="mt-3 font-serif text-3xl font-black">本日の営業状況</h2>
+          <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+            <MiniStatus label="営業" value={copy.status} />
+            <MiniStatus label="限定" value={`${copy.limitedRemaining}杯`} />
+            <MiniStatus label="混雑" value={copy.crowdCurrent} />
+          </div>
+          <p className="mt-4 rounded-2xl bg-white/12 p-4 text-sm font-bold leading-relaxed">
+            ラストオーダー {copy.lastOrder}。限定麺は売り切れ次第終了です。来店前の席確認はLINEが便利です。
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <SalesStatusCard title="席の目安" main={`カウンター残り${copy.counterSeats}席`} sub={`テーブル残り${copy.tableSeats}組`} />
+          <SalesStatusCard title="おすすめ" main={copy.limitedName} sub={`本日残り${copy.limitedRemaining}杯`} accent />
+          <div className="rounded-[22px] border border-suifu-primary/10 bg-suifu-paper/80 p-4 md:col-span-2">
+            <h3 className="font-serif text-xl font-black">30分ごとの混雑目安</h3>
+            <div className="mt-4 grid gap-3">
+              {slots.slice(0, 5).map((slot) => (
+                <div key={slot.time} className="grid grid-cols-[54px_1fr_76px] items-center gap-3 text-xs font-black md:text-sm">
+                  <span className="text-suifu-muted">{slot.time}</span>
+                  <span className="h-3 overflow-hidden rounded-full bg-white">
+                    <span className="block h-full rounded-full bg-suifu-primary" style={{ width: `${Math.max(0, Math.min(100, Number(slot.level) || 0))}%` }} />
+                  </span>
+                  <span className="text-right text-suifu-primary">{cleanText(slot.label, "目安")}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SalesStatusCard({ title, main, sub, accent = false }) {
+  return (
+    <div className={`rounded-[22px] p-4 shadow-insetLine ${accent ? "bg-suifu-accent text-white" : "bg-suifu-paper/80 text-suifu-ink"}`}>
+      <span className={`text-[10px] font-black tracking-[0.16em] ${accent ? "text-white/70" : "text-suifu-muted"}`}>{title}</span>
+      <strong className="mt-2 block font-serif text-2xl leading-tight">{main}</strong>
+      <p className={`mt-2 text-sm font-bold ${accent ? "text-white/76" : "text-suifu-muted"}`}>{sub}</p>
+    </div>
+  );
+}
+
+function SalesConcept({ data }) {
+  return (
+    <section id="concept" className="mx-auto grid max-w-[1280px] gap-6 px-4 py-12 md:grid-cols-[0.86fr_1.14fr] md:items-center md:px-8 md:py-16">
+      <div className="reveal rounded-[28px] bg-white/70 p-6 shadow-insetLine md:p-8">
+        <SectionTitle label="CONCEPT" title="澄みきった一杯を、毎日の食事に。" />
+        <p className="mt-5 text-base font-bold leading-[2] text-suifu-muted">
+          派手な濃さではなく、最後のひと口まで軽やかに。鶏の旨み、魚介の余韻、香味野菜の清涼感を重ね、昼にも夜にも選びやすい塩らぁ麺を目指しています。
+        </p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          {["透明感のある塩スープ", "細麺のしなやかな食感", "木の温度を感じる店内"].map((item) => (
+            <div key={item} className="rounded-2xl border border-suifu-primary/10 bg-white/80 px-4 py-3 text-sm font-black text-suifu-primary">{item}</div>
+          ))}
+        </div>
+      </div>
+      <SafeImage src={imageFor(data, "interior")} fallback={shopCollage} alt="翠風の店内と一杯" className="reveal aspect-[4/3] w-full rounded-[28px] object-cover shadow-soft md:aspect-square" />
+    </section>
+  );
+}
+
+function SalesLimitedMenu({ data }) {
+  const copy = publicCopy(data);
+  return (
+    <section id="limited" className="mx-auto max-w-[1280px] px-4 py-10 md:px-8 md:py-14">
+      <div className="reveal grid overflow-hidden rounded-[30px] bg-suifu-primary text-white shadow-soft md:grid-cols-[1.05fr_0.95fr]">
+        <SafeImage src={imageFor(data, "limitedMenu")} fallback={yuzuLimited} alt={copy.limitedName} className="h-full min-h-[330px] w-full object-cover" />
+        <div className="p-6 md:p-10">
+          <span className="eyebrow text-white/72">LIMITED MENU</span>
+          <h2 className="mt-4 font-serif text-4xl font-black leading-tight md:text-5xl">{copy.limitedName}</h2>
+          <p className="mt-4 text-base font-bold leading-[1.9] text-white/84">{copy.limitedMessage}</p>
+          <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-3xl bg-white/12 p-5">
+              <span className="text-sm font-black text-white/70">{copy.limitedStatus}</span>
+              <strong className="block font-serif text-5xl">残り{copy.limitedRemaining}杯</strong>
+              <span className="text-sm font-bold text-white/74">全{copy.limitedTotal}杯</span>
+            </div>
+            <a href="#line" className="inline-flex min-h-14 items-center justify-center rounded-3xl bg-[#06c755] px-5 text-sm font-black text-white">売り切れ通知を受け取る</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SalesMenu({ data }) {
+  return (
+    <section id="menu" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
+      <SectionTitle label="MENU" title="看板メニュー" />
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {salesMenuItems.map(([name, price, text, fallback], index) => (
+          <article key={name} className="reveal overflow-hidden rounded-[24px] border border-suifu-primary/10 bg-white shadow-card">
+            <SafeImage src={index === 3 ? imageFor(data, "limitedMenu") : fallback} fallback={fallback} alt={name} className="aspect-[4/3] w-full object-cover" />
+            <div className="p-4">
+              <h3 className="font-serif text-2xl font-black leading-tight">{name}</h3>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-suifu-muted">{text}</p>
+              <strong className="mt-4 block text-xl font-black text-suifu-primary">{price}</strong>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="reveal mt-5 overflow-hidden rounded-[26px] border border-suifu-primary/10 bg-white shadow-soft">
+        <SafeImage src={imageFor(data, "menu")} fallback={menuFull} alt="翠風のお品書き一覧" className="w-full object-cover" />
+      </div>
+    </section>
+  );
+}
+
+function SalesMovie() {
+  const shots = ["湯気の立つ着丼", "スープ表面の照り", "麺を持ち上げる瞬間", "暖簾と店内の余韻"];
+  return (
+    <section id="movie" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8 md:py-16">
+      <div className="reveal grid gap-5 md:grid-cols-[1.15fr_0.85fr] md:items-center">
+        <div className="relative overflow-hidden rounded-[30px] bg-suifu-night shadow-soft md:rounded-[36px]">
+          <video src={movieA} poster={heroFastImage} className="aspect-[4/5] w-full object-cover md:aspect-[16/9]" muted autoPlay loop playsInline preload="metadata" aria-label="翠風 15秒CM" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-suifu-night/80 via-suifu-night/10 to-transparent" />
+          <div className="steam steam-a" />
+          <div className="steam steam-b" />
+          <div className="absolute bottom-5 left-5 right-5 text-white md:bottom-8 md:left-8">
+            <span className="eyebrow text-white/72">15 SEC CM</span>
+            <h2 className="mt-2 font-serif text-3xl font-black leading-tight md:text-5xl">湯気まで伝わる、初夏の一杯。</h2>
+          </div>
+        </div>
+        <div className="rounded-[28px] bg-white/82 p-6 shadow-card md:p-8">
+          <SectionTitle label="MOVIE" title="15秒CMで、店の魅力を一瞬で伝える。" />
+          <p className="mt-5 text-sm font-bold leading-[1.9] text-suifu-muted">
+            料理写真だけでは伝わりにくい、湯気、照り、麺の動き、店内の温度感。LPの中で自然に流れる短尺映像が、SNS広告やInstagram投稿にもつながる強い来店導線になります。
+          </p>
+          <div className="mt-6 grid gap-3">
+            {shots.map((shot, index) => (
+              <div key={shot} className="flex items-center gap-3 rounded-2xl bg-suifu-paper/80 p-3 text-sm font-black">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-suifu-primary text-xs text-white">0{index + 1}</span>
+                {shot}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SalesGallery({ data }) {
+  const items = [
+    [imageFor(data, "interior"), counterWide, "カウンター", "一人でも落ち着いて食べられる木のカウンター。"],
+    [imageFor(data, "gallery"), tableArea, "テーブル席", "家族や仕事帰りの食事にも使いやすい空間。"],
+    [imageFor(data, "exterior"), shopSign, "目印の看板", "初めてでも見つけやすい、木の看板と暖簾。"]
+  ];
+  return (
+    <section id="gallery" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
+      <SectionTitle label="SPACE" title="店内・空間紹介" />
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        {items.map(([src, fallback, title, text]) => (
+          <article key={title} className="reveal overflow-hidden rounded-[24px] border border-suifu-primary/10 bg-white shadow-card">
+            <SafeImage src={src} fallback={fallback} alt={title} className="aspect-[4/3] w-full object-cover" />
+            <div className="p-4">
+              <h3 className="font-serif text-2xl font-black">{title}</h3>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-suifu-muted">{text}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SalesVoices() {
+  const voices = [
+    ["気づいたらスープまで飲み干していました。塩でここまで満足感があるのは珍しい。", "30代・男性"],
+    ["柚子の香りが強すぎず、最後まで軽い。昼でも夜でも食べたい味です。", "40代・女性"],
+    ["店内が落ち着いていて、初めてでも入りやすい。看板も分かりやすかったです。", "20代・女性"]
+  ];
+  return (
+    <section id="voice" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8 md:py-16">
+      <SectionTitle label="VOICE" title="お客様の声" />
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        {voices.map(([text, author]) => (
+          <article key={text} className="reveal rounded-[24px] border border-suifu-primary/10 bg-white/84 p-5 shadow-card">
+            <div className="text-sm tracking-[0.18em] text-suifu-gold">★★★★★</div>
+            <p className="mt-4 text-base font-bold leading-[1.9] text-suifu-ink">「{text}」</p>
+            <p className="mt-4 flex items-center gap-2 text-xs font-black text-suifu-muted before:h-px before:w-5 before:bg-suifu-primary/25">{author}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SalesStoreInfo({ data }) {
+  const copy = publicCopy(data);
+  const info = [
+    ["営業時間", copy.hours],
+    ["定休日", "火曜日"],
+    ["住所", copy.address],
+    ["電話番号", copy.phone],
+    ["席数", "カウンター10席 / テーブル12席"],
+    ["支払い方法", "現金 / QR決済"],
+    ["駐車場", "近隣コインパーキングあり"],
+    ["最寄り駅", copy.station]
+  ];
+  return (
+    <section id="shopinfo" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
+      <SectionTitle label="INFO" title="店舗情報" />
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {info.map(([label, value]) => (
+          <div key={label} className="reveal rounded-[22px] border border-suifu-primary/10 bg-white/84 p-4 shadow-insetLine">
+            <span className="text-[10px] font-black tracking-[0.16em] text-suifu-muted">{label}</span>
+            <strong className="mt-2 block text-sm font-black leading-relaxed text-suifu-primary">{value}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SalesAccess({ data }) {
+  const copy = publicCopy(data);
+  return (
+    <section id="access" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
+      <SectionTitle label="ACCESS" title="初めてでも迷わないアクセス" />
+      <div className="mt-5 grid gap-5 md:grid-cols-[0.88fr_1.12fr]">
+        <div className="reveal rounded-[24px] bg-white/84 p-5 shadow-card">
+          <Info label="住所" value={copy.address} dark />
+          <Info label="最寄り駅" value={copy.station} dark />
+          <Info label="目印" value={copy.landmark} dark />
+          <Info label="営業時間" value={copy.hours} dark />
+          <a href={copy.mapUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-suifu-primary text-sm font-black text-white">
+            <Navigation className="h-4 w-4" /> 現在地から経路を見る
+          </a>
+        </div>
+        <div className="reveal overflow-hidden rounded-[24px] border border-suifu-primary/10 bg-white shadow-soft">
+          <div className="relative aspect-[4/3] bg-[linear-gradient(135deg,rgb(236_232_203),rgb(255_255_246))]">
+            <div className="absolute inset-5 rounded-[22px] border border-suifu-primary/10 bg-white/64" />
+            <div className="absolute left-[18%] top-[22%] h-[52%] w-2 rounded-full bg-suifu-bamboo" />
+            <div className="absolute left-[10%] top-[48%] h-2 w-[72%] rounded-full bg-suifu-bamboo" />
+            <div className="absolute left-[46%] top-[24%] h-[56%] w-2 rounded-full bg-suifu-primary/20" />
+            <div className="absolute left-[34%] top-[42%] grid h-16 w-16 place-items-center rounded-full bg-suifu-accent text-white shadow-card">
+              <MapPin className="h-7 w-7" />
+            </div>
+            <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-white/90 p-4 shadow-card">
+              <p className="text-sm font-black text-suifu-primary">近くまで来たら、木の看板と紺の暖簾が目印です。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SalesInstagram({ data }) {
+  const items = [
+    [imageFor(data, "limitedMenu"), yuzuLimited, "季節限定の一杯", "本日販売中"],
+    [imageFor(data, "interior"), counterWide, "営業前のカウンター", "落ち着いた店内"],
+    [imageFor(data, "exterior"), shopSign, "木の看板", "初来店の目印"],
+    [imageFor(data, "gallery"), tableArea, "テーブル席", "夜営業もゆっくり"]
+  ];
+  return (
+    <section id="sns" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
+      <SectionTitle label="INSTAGRAM" title="写真で伝わる、店の日常" />
+      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {items.map(([src, fallback, title, meta], index) => (
+          <article key={title} className="reveal group overflow-hidden rounded-[22px] border border-white/70 bg-white/78 shadow-card">
+            <div className={`relative aspect-square overflow-hidden insta-scene scene-${index}`}>
+              <SafeImage src={src} fallback={fallback} alt={title} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-suifu-ink/55 via-transparent to-transparent" />
+            </div>
+            <div className="p-3">
+              <h3 className="text-sm font-black leading-snug">{title}</h3>
+              <p className="mt-1 text-xs font-bold text-suifu-muted">{meta}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SalesFinalCta({ data }) {
+  const copy = publicCopy(data);
+  return (
+    <section id="reserve" className="mx-auto max-w-[1280px] px-4 pb-28 pt-6 md:px-8 md:pb-20">
+      <div className="reveal relative overflow-hidden rounded-[30px] bg-suifu-night p-6 text-white shadow-soft md:grid md:grid-cols-[0.9fr_1.1fr] md:items-center md:p-8">
+        <div className="light-sweep" />
+        <div>
+          <span className="eyebrow text-white/60">VISIT</span>
+          <h2 className="mt-3 font-serif text-3xl font-black leading-tight md:text-5xl">今日の一杯を、迷わず食べに行ける。</h2>
+          <p className="mt-4 text-sm font-bold leading-[1.9] text-white/70">
+            席の確認、地図、電話まで、来店前に必要な情報をひとつに。限定麺は売り切れ次第終了です。
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <a href="#menu" className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-suifu-primary">メニューを見る</a>
+            <a href={copy.mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-suifu-primary px-5 text-sm font-black text-white">
+              <Navigation className="h-4 w-4" /> 地図で行く
+            </a>
+            <a href={`tel:${copy.phone}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-suifu-accent px-5 text-sm font-black text-white">
+              <Phone className="h-4 w-4" /> 電話する
+            </a>
+          </div>
+        </div>
+        <SafeImage src={imageFor(data, "exterior")} fallback={shopSign} alt="翠風の目印" className="mt-6 aspect-[4/3] w-full rounded-[24px] object-cover shadow-card md:mt-0" />
+      </div>
+    </section>
+  );
+}
+
+function SalesStickyCta({ data }) {
+  const copy = publicCopy(data);
+  const items = [
+    ["電話", `tel:${copy.phone}`, Phone, "bg-suifu-accent"],
+    ["地図", copy.mapUrl, MapPin, "bg-suifu-primary"],
+    ["メニュー", "#menu", Soup, "bg-suifu-primary"]
+  ];
+  return (
+    <aside className="fixed inset-x-2 bottom-2 z-40 grid grid-cols-3 gap-1 rounded-[18px] bg-suifu-ink/94 p-1.5 shadow-2xl md:hidden">
+      {items.map(([label, href, Icon, color]) => (
+        <a key={label} href={href} className={`grid min-h-12 min-w-0 place-items-center overflow-hidden rounded-[14px] text-[10px] font-black text-white ${color}`}>
+          <Icon className="h-4 w-4" />
+          <span className="max-w-full truncate">{label}</span>
+        </a>
+      ))}
+    </aside>
   );
 }
 
