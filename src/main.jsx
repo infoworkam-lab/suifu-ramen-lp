@@ -174,6 +174,7 @@ function PublicLp({ siteData }) {
       <Header data={data} />
       <main>
         <Hero data={data} />
+        <LpValueStrip data={data} />
         <Movie />
         <TodayStatus data={data} />
         <CrowdStatus data={data} />
@@ -183,8 +184,10 @@ function PublicLp({ siteData }) {
         <LineSection data={data} />
         <Menu data={data} />
         <CraftScenes data={data} />
+        <CustomerVoices />
         <Gallery data={data} />
         <Access data={data} />
+        <FinalReserve data={data} />
       </main>
       <StickyCta data={data} />
     </div>
@@ -267,6 +270,28 @@ function Hero({ data }) {
           <MiniStatus label="混雑" value={data.crowdStatus.current} />
           <MiniStatus label="限定" value={`${data.limitedMenu.remaining}杯`} />
         </div>
+      </div>
+    </section>
+  );
+}
+
+function LpValueStrip({ data }) {
+  const points = [
+    ["新商品", data.limitedMenu.name, `本日残り${data.limitedMenu.remaining}杯`],
+    ["場所", "新福島駅 徒歩約3分", "木製看板と黒い暖簾が目印"],
+    ["来店前", data.crowdStatus.current, "LINEで席状況を確認できます"],
+    ["営業", data.shopStatus.state, data.access.hours]
+  ];
+  return (
+    <section className="mx-auto max-w-6xl px-4 pb-6 pt-2 md:px-6 md:pb-8">
+      <div className="reveal grid overflow-hidden rounded-[26px] border border-suifu-primary/10 bg-white/86 shadow-card md:grid-cols-4">
+        {points.map(([label, title, text]) => (
+          <div key={label} className="border-b border-suifu-primary/10 p-4 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0">
+            <span className="text-[10px] font-black tracking-[0.18em] text-suifu-primary">{label}</span>
+            <strong className="mt-1 block font-serif text-xl leading-tight">{title}</strong>
+            <p className="mt-1 text-xs font-bold leading-relaxed text-suifu-muted">{text}</p>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -503,6 +528,28 @@ function CraftScenes({ data }) {
   );
 }
 
+function CustomerVoices() {
+  const voices = [
+    ["気づいたら飲み干してた。塩でここまで満足感があるのは珍しい。", "30代・男性"],
+    ["柚子の香りが強すぎず、最後まで軽い。昼でも夜でも食べたい味。", "40代・女性"],
+    ["店内が落ち着いていて初めてでも入りやすい。看板も分かりやすかった。", "20代・女性"]
+  ];
+  return (
+    <section id="voice" className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
+      <SectionTitle label="VOICE" title="来店した人の言葉が、次の来店理由になる。" />
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        {voices.map(([text, author]) => (
+          <article key={text} className="reveal rounded-[24px] border border-suifu-primary/10 bg-white/84 p-5 shadow-card">
+            <div className="text-sm tracking-[0.18em] text-suifu-gold">★★★★★</div>
+            <p className="mt-4 text-base font-bold leading-[1.9] text-suifu-ink">「{text}」</p>
+            <p className="mt-4 flex items-center gap-2 text-xs font-black text-suifu-muted before:h-px before:w-5 before:bg-suifu-primary/25">{author}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Gallery({ data }) {
   const items = [
     [imageFor(data, "interior"), counterWide, "カウンター"],
@@ -540,6 +587,30 @@ function Access({ data }) {
           </a>
         </div>
         <SafeImage src={imageFor(data, "exterior")} fallback={shopSign} alt="店舗看板" className="reveal aspect-[4/3] w-full rounded-[24px] object-cover shadow-soft" />
+      </div>
+    </section>
+  );
+}
+
+function FinalReserve({ data }) {
+  return (
+    <section id="reserve" className="mx-auto max-w-6xl px-4 pb-28 pt-6 md:px-6 md:pb-20">
+      <div className="reveal relative overflow-hidden rounded-[30px] bg-suifu-night p-6 text-white shadow-soft md:grid md:grid-cols-[0.9fr_1.1fr] md:items-center md:p-8">
+        <div className="light-sweep" />
+        <div>
+          <span className="eyebrow text-white/60">RESERVE</span>
+          <h2 className="mt-3 font-serif text-3xl font-black leading-tight md:text-5xl">来店前に、席と限定麺を確認。</h2>
+          <p className="mt-4 text-sm font-bold leading-[1.9] text-white/70">
+            売り切れ次第終了の日があります。初めての方も、LINEまたはGoogleマップから迷わずご来店いただけます。
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <a href="https://line.me/" className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#06c755] px-5 text-sm font-black text-white">LINEで席確認</a>
+            <a href={data.access.mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-black text-suifu-primary">
+              <Navigation className="h-4 w-4" /> 現在地から行く
+            </a>
+          </div>
+        </div>
+        <SafeImage src={imageFor(data, "exterior")} fallback={shopSign} alt="翠風の目印" className="mt-6 aspect-[4/3] w-full rounded-[24px] object-cover shadow-card md:mt-0" />
       </div>
     </section>
   );
