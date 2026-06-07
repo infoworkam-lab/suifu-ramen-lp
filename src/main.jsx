@@ -216,14 +216,14 @@ function PublicLp({ siteData }) {
   return (
     <div className="min-h-screen overflow-x-hidden bg-suifu-paper text-suifu-ink antialiased" style={themeStyle}>
       <AmbientLayer />
-      <SalesHeader data={data} />
+      <PremiumHeader data={data} />
       <main>
-        <SalesHero data={data} />
+        <PremiumHero data={data} />
+        <PremiumMovie />
         <SalesTodayStatus data={data} />
         <SalesConcept data={data} />
         <SalesLimitedMenu data={data} />
         <SalesMenu data={data} />
-        <SalesMovie />
         <SalesGallery data={data} />
         <SalesVoices />
         <SalesStoreInfo data={data} />
@@ -231,8 +231,147 @@ function PublicLp({ siteData }) {
         <SalesInstagram data={data} />
         <SalesFinalCta data={data} />
       </main>
-      <SalesStickyCta data={data} />
+      <PremiumStickyCta data={data} />
     </div>
+  );
+}
+
+function PremiumHeader({ data }) {
+  const copy = publicCopy(data);
+  return (
+    <header className="sticky top-0 z-30 border-b border-suifu-primary/10 bg-suifu-paper/94 backdrop-blur-md">
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 py-3 md:px-8 md:py-4">
+        <a href="/" className="flex items-center gap-3" aria-label={`${copy.brandName} トップへ`}>
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-suifu-primary font-serif text-xl font-black text-white shadow-card">翠</span>
+          <span>
+            <span className="block text-[10px] font-bold tracking-[0.18em] text-suifu-muted">{copy.kana}</span>
+            <strong className="block font-serif text-2xl leading-none md:text-3xl">{copy.brandShort}</strong>
+            <span className="block text-[10px] font-bold tracking-[0.38em] text-suifu-muted">{copy.roman}</span>
+          </span>
+        </a>
+        <nav className="hidden items-center gap-8 md:flex">
+          {[
+            ["こだわり", "#concept"],
+            ["メニュー", "#menu"],
+            ["CM映像", "#movie"],
+            ["店内", "#gallery"],
+            ["アクセス", "#access"]
+          ].map(([label, href]) => (
+            <a key={href} href={href} className="text-sm font-black text-suifu-primary transition hover:text-suifu-accent">
+              {label}
+            </a>
+          ))}
+        </nav>
+        <a href="#menu" className="hidden min-h-11 items-center rounded-full bg-suifu-primary px-5 text-sm font-black text-white shadow-card md:inline-flex">
+          メニューを見る
+        </a>
+        <button type="button" className="grid h-11 w-11 place-items-center rounded-full border border-suifu-primary/15 bg-white/70 md:hidden" aria-label="メニュー">
+          <span className="block h-0.5 w-5 rounded-full bg-suifu-primary shadow-[0_7px_0_rgb(66_86_42),0_-7px_0_rgb(66_86_42)]" />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function PremiumHero({ data }) {
+  const copy = publicCopy(data);
+  return (
+    <section id="top" className="relative mx-auto grid max-w-[1400px] gap-6 px-4 pb-10 pt-5 md:min-h-[720px] md:grid-cols-[45%_55%] md:items-center md:px-8 md:py-12 xl:gap-10">
+      <div className="reveal relative z-10 order-2 flex flex-col justify-center md:order-1">
+        <span className="eyebrow text-suifu-primary">淡麗塩 / 初夏 / 大阪・福島</span>
+        <h1 className="mt-4 max-w-[9.5em] text-balance font-serif text-[clamp(2.4rem,8vw,4rem)] font-black leading-[1.08] tracking-normal md:mt-6 md:text-[clamp(4rem,5.2vw,6rem)]">
+          淡麗塩、<br />竹影に香る一杯。
+        </h1>
+        <p className="mt-5 max-w-xl text-[15px] font-bold leading-[1.95] text-suifu-muted md:text-base">
+          透き通るスープに、鶏の旨みと柚子の香りを重ねて。昼に重くならず、夜にもすっと入る、毎日食べたくなる塩らぁ麺です。
+        </p>
+        <div className="mt-6 grid grid-cols-2 gap-3 md:mt-8 md:grid-cols-4">
+          <PremiumHeroFact label="営業時間" value="11:00-22:00" />
+          <PremiumHeroFact label="最寄駅" value="新福島駅 徒歩3分" />
+          <PremiumHeroFact label="価格帯" value="¥980-¥1,500" />
+          <PremiumHeroFact label="評価" value="★4.7" />
+        </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3 md:mt-8">
+          <a href="#menu" className="inline-flex min-h-14 items-center justify-center rounded-full bg-suifu-primary px-6 text-sm font-black text-white shadow-card">メニューを見る</a>
+          <a href={copy.mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-suifu-primary/20 bg-white/82 px-6 text-sm font-black text-suifu-primary shadow-insetLine">
+            <MapPin className="h-4 w-4" /> Googleマップで行く
+          </a>
+          <a href={`tel:${copy.phone}`} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-suifu-primary/20 bg-white/60 px-6 text-sm font-black text-suifu-primary shadow-insetLine">
+            <Phone className="h-4 w-4" /> 電話する
+          </a>
+        </div>
+      </div>
+      <div className="reveal relative z-10 order-1 flex justify-center md:order-2 md:justify-end">
+        <div className="relative w-full max-w-[760px] rounded-[34px] bg-white/58 p-5 shadow-soft md:w-[90%] md:p-10">
+          <div className="relative overflow-hidden rounded-[28px] bg-white shadow-card">
+            <SafeImage src={imageFor(data, "hero")} fallback={heroFoodImage} alt={`${copy.brandName}の看板ラーメン`} className="aspect-[1.08/1] w-full object-cover saturate-[1.12] contrast-[1.04]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_48%_40%,rgba(255,255,255,0.22),transparent_24%),linear-gradient(0deg,rgba(24,27,20,0.20),transparent_48%)]" />
+            <div className="steam steam-a" />
+            <div className="steam steam-b" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PremiumHeroFact({ label, value }) {
+  return (
+    <div className="flex h-[110px] flex-col justify-center rounded-[20px] border border-suifu-primary/10 bg-white/78 px-4 shadow-insetLine">
+      <span className="text-[11px] font-black tracking-[0.12em] text-suifu-muted">{label}</span>
+      <strong className="mt-2 block text-[15px] font-black leading-snug text-suifu-primary">{value}</strong>
+    </div>
+  );
+}
+
+function PremiumMovie() {
+  const shots = ["湯気の立つ着丼", "スープ表面の照り", "麺を持ち上げる瞬間", "暖簾と店内の余韻"];
+  return (
+    <section id="movie" className="mx-auto max-w-[1400px] px-4 py-[clamp(48px,8vw,120px)] md:px-8">
+      <div className="reveal grid gap-6 md:grid-cols-[1.2fr_0.8fr] md:items-center">
+        <div className="relative overflow-hidden rounded-[32px] bg-suifu-night shadow-soft">
+          <video src={movieA} poster={heroFastImage} className="aspect-[4/5] w-full object-cover md:aspect-[16/8]" muted autoPlay loop playsInline preload="metadata" aria-label="翠風 15秒CM" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-suifu-night/82 via-suifu-night/8 to-transparent" />
+          <div className="absolute bottom-5 left-5 right-5 text-white md:bottom-8 md:left-8">
+            <span className="eyebrow text-white/68">15 SEC CM</span>
+            <h2 className="mt-2 font-serif text-3xl font-black leading-tight md:text-5xl">店舗の魅力を15秒に凝縮。</h2>
+          </div>
+        </div>
+        <div className="rounded-[28px] bg-white/82 p-6 shadow-card md:p-8">
+          <SectionTitle label="MOVIE" title="LPとCM映像で、食べたい瞬間をつくる。" />
+          <p className="mt-5 text-sm font-bold leading-[1.9] text-suifu-muted">
+            写真だけでは伝わりにくい、湯気、照り、麺の動き、店内の温度感。短尺CMをLPに組み込むことで、SNS広告やInstagram投稿にも展開しやすい来店導線になります。
+          </p>
+          <div className="mt-6 grid gap-3">
+            {shots.map((shot, index) => (
+              <div key={shot} className="flex items-center gap-3 rounded-2xl bg-suifu-paper/80 p-3 text-sm font-black">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-suifu-primary text-xs text-white">0{index + 1}</span>
+                {shot}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PremiumStickyCta({ data }) {
+  const copy = publicCopy(data);
+  const items = [
+    ["電話", `tel:${copy.phone}`, Phone, "bg-suifu-accent"],
+    ["地図", copy.mapUrl, MapPin, "bg-suifu-primary"],
+    ["メニュー", "#menu", Soup, "bg-suifu-primary"]
+  ];
+  return (
+    <aside className="fixed inset-x-2 bottom-2 z-40 grid grid-cols-3 gap-1 rounded-[18px] bg-suifu-ink/94 p-1.5 shadow-2xl md:hidden">
+      {items.map(([label, href, Icon, color]) => (
+        <a key={label} href={href} className={`grid min-h-12 min-w-0 place-items-center overflow-hidden rounded-[14px] text-[10px] font-black text-white ${color}`}>
+          <Icon className="h-4 w-4" />
+          <span className="max-w-full truncate">{label}</span>
+        </a>
+      ))}
+    </aside>
   );
 }
 
