@@ -274,12 +274,6 @@ a {
   animation: reveal var(--motion-normal) ease both;
 }
 
-.reveal.in {
-  opacity: 1;
-  transform: translateY(0);
-  animation: reveal var(--motion-normal) ease both;
-}
-
 @keyframes reveal {
   to {
     opacity: 1;
