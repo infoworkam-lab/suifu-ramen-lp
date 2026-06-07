@@ -40,15 +40,15 @@ import counterWide from "../assets/suifu_counter_wide.png";
 import shopSign from "../assets/suifu_sign.png";
 
 const themeStyle = {
-  "--color-primary": "66 86 42",
-  "--color-accent": "166 35 34",
-  "--color-gold": "178 142 73",
-  "--color-bamboo": "224 234 190",
-  "--color-paper": "248 246 230",
-  "--color-ink": "28 32 22",
-  "--color-muted": "82 91 67",
-  "--color-night": "24 27 20",
-  "--color-steam": "239 233 210",
+  "--color-primary": "51 74 36",
+  "--color-accent": "217 164 65",
+  "--color-gold": "217 164 65",
+  "--color-bamboo": "221 228 198",
+  "--color-paper": "246 241 228",
+  "--color-ink": "31 38 27",
+  "--color-muted": "104 114 90",
+  "--color-night": "31 38 27",
+  "--color-steam": "255 251 240",
   "--motion-slow": "7s",
   "--motion-normal": "720ms",
   "--radius-brand": "24px"
@@ -173,16 +173,42 @@ function cleanText(value, fallback) {
   return trimmed;
 }
 
+function contentValue(data, key, fallback) {
+  return cleanText(data?.content?.[key], fallback);
+}
+
+function lines(text) {
+  return String(text).split("\n").map((line, index, array) => (
+    <React.Fragment key={`${line}-${index}`}>
+      {line}
+      {index < array.length - 1 && <br />}
+    </React.Fragment>
+  ));
+}
+
 function publicCopy(data) {
   const access = data.access || {};
   const status = data.shopStatus || {};
   const crowd = data.crowdStatus || {};
   const limited = data.limitedMenu || {};
+  const brandName = cleanText(data.brand?.name, "らぁ麺 翠風");
   return {
-    brandName: "らぁ麺 翠風",
-    brandShort: "翠風",
-    kana: "らぁめん すいふう",
-    roman: "SUIFU",
+    brandName,
+    brandShort: cleanText(data.brand?.shortName, brandName.replace("らぁ麺 ", "")),
+    kana: cleanText(data.brand?.kana, "らぁめん すいふう"),
+    roman: cleanText(data.brand?.roman, "SUIFU"),
+    heroTitle: contentValue(data, "heroTitle", "淡麗塩、\n竹影に香る一杯。"),
+    heroSubtitle: contentValue(data, "heroSubtitle", "透き通るスープに、鶏の旨みと柚子の香りを重ねて。昼に重くならず、夜にもすっと入る、毎日食べたくなる塩らぁ麺です。"),
+    conceptTitle: contentValue(data, "conceptTitle", "澄みきった一杯を、毎日の食事に。"),
+    conceptText: contentValue(data, "conceptText", "派手な濃さではなく、最後のひと口まで軽やかに。鶏の旨み、魚介の余韻、香味野菜の清涼感を重ね、昼にも夜にも選びやすい塩らぁ麺を目指しています。"),
+    movieTitle: contentValue(data, "movieTitle", "店舗の魅力を15秒に凝縮。"),
+    movieText: contentValue(data, "movieText", "写真だけでは伝わりにくい、湯気、照り、麺の動き、店内の温度感。短尺CMをLPに組み込むことで、SNS広告やInstagram投稿にも展開しやすい来店導線になります。"),
+    galleryTitle: contentValue(data, "galleryTitle", "店内・空間紹介"),
+    finalTitle: contentValue(data, "finalTitle", "今日の一杯を、迷わず食べに行ける。"),
+    finalText: contentValue(data, "finalText", "席の確認、地図、電話まで、来店前に必要な情報をひとつに。限定麺は売り切れ次第終了です。"),
+    primaryCta: contentValue(data, "primaryCta", "メニューを見る"),
+    mapCta: contentValue(data, "mapCta", "Googleマップで行く"),
+    phoneCta: contentValue(data, "phoneCta", "電話する"),
     status: cleanText(status.state, "営業中"),
     open: cleanText(status.open, "11:00"),
     close: cleanText(status.close, "22:00"),
@@ -193,6 +219,9 @@ function publicCopy(data) {
     landmark: cleanText(access.landmark, "木の看板と深い紺の暖簾が目印です。"),
     mapUrl: typeof access.mapUrl === "string" && access.mapUrl.startsWith("http") ? access.mapUrl : "https://www.google.com/maps/search/?api=1&query=大阪市福島区福島2丁目",
     phone: cleanText(access.phone, "06-0000-0000"),
+    closed: contentValue(data, "closedDays", "火曜日"),
+    priceRange: contentValue(data, "priceRange", "¥980-¥1,500"),
+    rating: contentValue(data, "rating", "★4.7"),
     limitedName: cleanText(limited.name, "季節限定 柚子塩らぁ麺"),
     limitedMessage: cleanText(limited.message, "国産柚子の香りを重ねた、初夏だけの塩らぁ麺。鶏の旨みを引き立てる、すっきりとした余韻をお楽しみください。"),
     limitedStatus: cleanText(limited.status, "販売中"),
@@ -204,12 +233,24 @@ function publicCopy(data) {
   };
 }
 
-const salesMenuItems = [
-  ["淡麗塩らぁ麺", "980円", "鶏の旨みと魚介の香りを澄ませた、翠風の基本となる一杯。", heroFoodImage],
-  ["特製淡麗塩らぁ麺", "1,280円", "味玉、鶏チャーシュー、穂先メンマを添えた満足感のある定番。", heroFastImage],
-  ["鶏白湯らぁ麺", "1,050円", "濃厚でありながら後味は軽く。夜にも選びやすいまろやかな白湯。", heroImage],
-  ["季節の冷やし塩そば", "1,180円", "涼やかな出汁と香味野菜で仕上げる、季節替わりの限定麺。", yuzuLimited]
+const fallbackMenuItems = [
+  { name: "淡麗塩らぁ麺", price: "980円", text: "鶏の旨みと魚介の香りを澄ませた、翠風の基本となる一杯。", recommended: true, image: heroFoodImage },
+  { name: "特製淡麗塩らぁ麺", price: "1,280円", text: "味玉、鶏チャーシュー、穂先メンマを添えた満足感のある定番。", recommended: false, image: heroFastImage },
+  { name: "鶏白湯らぁ麺", price: "1,050円", text: "濃厚でありながら後味は軽く。夜にも選びやすいまろやかな白湯。", recommended: false, image: heroImage },
+  { name: "季節の冷やし塩そば", price: "1,180円", text: "涼やかな出汁と香味野菜で仕上げる、季節替わりの限定麺。", recommended: false, image: yuzuLimited }
 ];
+
+function menuItemsFor(data) {
+  const saved = Array.isArray(data?.menuItems) ? data.menuItems : [];
+  const source = saved.length ? saved : fallbackMenuItems;
+  return source.slice(0, 5).map((item, index) => ({
+    name: cleanText(item?.name, fallbackMenuItems[index]?.name || "らぁ麺"),
+    price: cleanText(item?.price, fallbackMenuItems[index]?.price || "980円"),
+    text: cleanText(item?.text || item?.description, fallbackMenuItems[index]?.text || "素材の旨みを生かした一杯。"),
+    recommended: Boolean(item?.recommended),
+    image: item?.image || fallbackMenuItems[index]?.image || heroFoodImage
+  }));
+}
 
 function PublicLp({ siteData }) {
   const data = safeData(siteData);
@@ -219,7 +260,7 @@ function PublicLp({ siteData }) {
       <PremiumHeader data={data} />
       <main>
         <PremiumHero data={data} />
-        <PremiumMovie />
+        <PremiumMovie data={data} />
         <SalesTodayStatus data={data} />
         <SalesConcept data={data} />
         <SalesLimitedMenu data={data} />
@@ -263,7 +304,7 @@ function PremiumHeader({ data }) {
           ))}
         </nav>
         <a href="#menu" className="hidden min-h-11 items-center rounded-full bg-suifu-primary px-5 text-sm font-black text-white shadow-card md:inline-flex">
-          メニューを見る
+          {copy.primaryCta}
         </a>
         <button type="button" className="grid h-11 w-11 place-items-center rounded-full border border-suifu-primary/15 bg-white/70 md:hidden" aria-label="メニュー">
           <span className="block h-0.5 w-5 rounded-full bg-suifu-primary shadow-[0_7px_0_rgb(66_86_42),0_-7px_0_rgb(66_86_42)]" />
@@ -280,24 +321,24 @@ function PremiumHero({ data }) {
       <div className="reveal relative z-10 order-2 flex flex-col justify-center md:order-1">
         <span className="eyebrow text-suifu-primary">淡麗塩 / 初夏 / 大阪・福島</span>
         <h1 className="mt-4 max-w-[9.5em] text-balance font-serif text-[clamp(2.4rem,8vw,4rem)] font-black leading-[1.08] tracking-normal md:mt-6 md:text-[clamp(4rem,5.2vw,6rem)]">
-          淡麗塩、<br />竹影に香る一杯。
+          {lines(copy.heroTitle)}
         </h1>
         <p className="mt-5 max-w-xl text-[15px] font-bold leading-[1.95] text-suifu-muted md:text-base">
-          透き通るスープに、鶏の旨みと柚子の香りを重ねて。昼に重くならず、夜にもすっと入る、毎日食べたくなる塩らぁ麺です。
+          {copy.heroSubtitle}
         </p>
         <div className="mt-6 grid grid-cols-2 gap-3 md:mt-8 md:grid-cols-4">
-          <PremiumHeroFact label="営業時間" value="11:00-22:00" />
-          <PremiumHeroFact label="最寄駅" value="新福島駅 徒歩3分" />
-          <PremiumHeroFact label="価格帯" value="¥980-¥1,500" />
-          <PremiumHeroFact label="評価" value="★4.7" />
+          <PremiumHeroFact label="営業時間" value={`${copy.open}-${copy.close}`} />
+          <PremiumHeroFact label="最寄駅" value={copy.station.replace("JR", "")} />
+          <PremiumHeroFact label="価格帯" value={copy.priceRange} />
+          <PremiumHeroFact label="評価" value={copy.rating} />
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-3 md:mt-8">
-          <a href="#menu" className="inline-flex min-h-14 items-center justify-center rounded-full bg-suifu-primary px-6 text-sm font-black text-white shadow-card">メニューを見る</a>
+          <a href="#menu" className="inline-flex min-h-14 items-center justify-center rounded-full bg-suifu-primary px-6 text-sm font-black text-white shadow-card">{copy.primaryCta}</a>
           <a href={copy.mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-suifu-primary/20 bg-white/82 px-6 text-sm font-black text-suifu-primary shadow-insetLine">
-            <MapPin className="h-4 w-4" /> Googleマップで行く
+            <MapPin className="h-4 w-4" /> {copy.mapCta}
           </a>
           <a href={`tel:${copy.phone}`} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-suifu-primary/20 bg-white/60 px-6 text-sm font-black text-suifu-primary shadow-insetLine">
-            <Phone className="h-4 w-4" /> 電話する
+            <Phone className="h-4 w-4" /> {copy.phoneCta}
           </a>
         </div>
       </div>
@@ -324,7 +365,8 @@ function PremiumHeroFact({ label, value }) {
   );
 }
 
-function PremiumMovie() {
+function PremiumMovie({ data }) {
+  const copy = publicCopy(data);
   const shots = ["湯気の立つ着丼", "スープ表面の照り", "麺を持ち上げる瞬間", "暖簾と店内の余韻"];
   return (
     <section id="movie" className="mx-auto max-w-[1400px] px-4 py-[clamp(48px,8vw,120px)] md:px-8">
@@ -334,13 +376,13 @@ function PremiumMovie() {
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-suifu-night/82 via-suifu-night/8 to-transparent" />
           <div className="absolute bottom-5 left-5 right-5 text-white md:bottom-8 md:left-8">
             <span className="eyebrow text-white/68">15 SEC CM</span>
-            <h2 className="mt-2 font-serif text-3xl font-black leading-tight md:text-5xl">店舗の魅力を15秒に凝縮。</h2>
+            <h2 className="mt-2 font-serif text-3xl font-black leading-tight md:text-5xl">{copy.movieTitle}</h2>
           </div>
         </div>
         <div className="rounded-[28px] bg-white/82 p-6 shadow-card md:p-8">
-          <SectionTitle label="MOVIE" title="LPとCM映像で、食べたい瞬間をつくる。" />
+          <SectionTitle label="MOVIE" title={copy.movieTitle} />
           <p className="mt-5 text-sm font-bold leading-[1.9] text-suifu-muted">
-            写真だけでは伝わりにくい、湯気、照り、麺の動き、店内の温度感。短尺CMをLPに組み込むことで、SNS広告やInstagram投稿にも展開しやすい来店導線になります。
+            {copy.movieText}
           </p>
           <div className="mt-6 grid gap-3">
             {shots.map((shot, index) => (
@@ -524,12 +566,13 @@ function SalesStatusCard({ title, main, sub, accent = false }) {
 }
 
 function SalesConcept({ data }) {
+  const copy = publicCopy(data);
   return (
     <section id="concept" className="mx-auto grid max-w-[1280px] gap-6 px-4 py-12 md:grid-cols-[0.86fr_1.14fr] md:items-center md:px-8 md:py-16">
       <div className="reveal rounded-[28px] bg-white/70 p-6 shadow-insetLine md:p-8">
-        <SectionTitle label="CONCEPT" title="澄みきった一杯を、毎日の食事に。" />
+        <SectionTitle label="CONCEPT" title={copy.conceptTitle} />
         <p className="mt-5 text-base font-bold leading-[2] text-suifu-muted">
-          派手な濃さではなく、最後のひと口まで軽やかに。鶏の旨み、魚介の余韻、香味野菜の清涼感を重ね、昼にも夜にも選びやすい塩らぁ麺を目指しています。
+          {copy.conceptText}
         </p>
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           {["透明感のある塩スープ", "細麺のしなやかな食感", "木の温度を感じる店内"].map((item) => (
@@ -567,17 +610,19 @@ function SalesLimitedMenu({ data }) {
 }
 
 function SalesMenu({ data }) {
+  const items = menuItemsFor(data);
   return (
     <section id="menu" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
       <SectionTitle label="MENU" title="看板メニュー" />
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {salesMenuItems.map(([name, price, text, fallback], index) => (
-          <article key={name} className="reveal overflow-hidden rounded-[24px] border border-suifu-primary/10 bg-white shadow-card">
-            <SafeImage src={index === 3 ? imageFor(data, "limitedMenu") : fallback} fallback={fallback} alt={name} className="aspect-[4/3] w-full object-cover" />
+        {items.map((item, index) => (
+          <article key={item.name} className="reveal overflow-hidden rounded-[24px] border border-suifu-primary/10 bg-white shadow-card">
+            <SafeImage src={index === 3 ? imageFor(data, "limitedMenu") : item.image} fallback={item.image} alt={item.name} className="aspect-[4/3] w-full object-cover" />
             <div className="p-4">
-              <h3 className="font-serif text-2xl font-black leading-tight">{name}</h3>
-              <p className="mt-2 text-sm font-bold leading-relaxed text-suifu-muted">{text}</p>
-              <strong className="mt-4 block text-xl font-black text-suifu-primary">{price}</strong>
+              {item.recommended && <span className="mb-2 inline-flex rounded-full bg-suifu-yuzu/20 px-3 py-1 text-[10px] font-black text-suifu-primary">おすすめ</span>}
+              <h3 className="font-serif text-2xl font-black leading-tight">{item.name}</h3>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-suifu-muted">{item.text}</p>
+              <strong className="mt-4 block text-xl font-black text-suifu-primary">{item.price}</strong>
             </div>
           </article>
         ))}
@@ -624,6 +669,7 @@ function SalesMovie() {
 }
 
 function SalesGallery({ data }) {
+  const copy = publicCopy(data);
   const items = [
     [imageFor(data, "interior"), counterWide, "カウンター", "一人でも落ち着いて食べられる木のカウンター。"],
     [imageFor(data, "gallery"), tableArea, "テーブル席", "家族や仕事帰りの食事にも使いやすい空間。"],
@@ -631,7 +677,7 @@ function SalesGallery({ data }) {
   ];
   return (
     <section id="gallery" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
-      <SectionTitle label="SPACE" title="店内・空間紹介" />
+      <SectionTitle label="SPACE" title={copy.galleryTitle} />
       <div className="mt-5 grid gap-4 md:grid-cols-3">
         {items.map(([src, fallback, title, text]) => (
           <article key={title} className="reveal overflow-hidden rounded-[24px] border border-suifu-primary/10 bg-white shadow-card">
@@ -673,7 +719,7 @@ function SalesStoreInfo({ data }) {
   const copy = publicCopy(data);
   const info = [
     ["営業時間", copy.hours],
-    ["定休日", "火曜日"],
+    ["定休日", copy.closed],
     ["住所", copy.address],
     ["電話番号", copy.phone],
     ["席数", "カウンター10席 / テーブル12席"],
@@ -708,7 +754,7 @@ function SalesAccess({ data }) {
           <Info label="目印" value={copy.landmark} dark />
           <Info label="営業時間" value={copy.hours} dark />
           <a href={copy.mapUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-suifu-primary text-sm font-black text-white">
-            <Navigation className="h-4 w-4" /> 現在地から経路を見る
+            <Navigation className="h-4 w-4" /> {copy.mapCta}
           </a>
         </div>
         <div className="reveal overflow-hidden rounded-[24px] border border-suifu-primary/10 bg-white shadow-soft">
@@ -721,7 +767,7 @@ function SalesAccess({ data }) {
               <MapPin className="h-7 w-7" />
             </div>
             <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-white/90 p-4 shadow-card">
-              <p className="text-sm font-black text-suifu-primary">近くまで来たら、木の看板と紺の暖簾が目印です。</p>
+              <p className="text-sm font-black text-suifu-primary">{copy.landmark}</p>
             </div>
           </div>
         </div>
@@ -766,17 +812,17 @@ function SalesFinalCta({ data }) {
         <div className="light-sweep" />
         <div>
           <span className="eyebrow text-white/60">VISIT</span>
-          <h2 className="mt-3 font-serif text-3xl font-black leading-tight md:text-5xl">今日の一杯を、迷わず食べに行ける。</h2>
+          <h2 className="mt-3 font-serif text-3xl font-black leading-tight md:text-5xl">{copy.finalTitle}</h2>
           <p className="mt-4 text-sm font-bold leading-[1.9] text-white/70">
-            席の確認、地図、電話まで、来店前に必要な情報をひとつに。限定麺は売り切れ次第終了です。
+            {copy.finalText}
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <a href="#menu" className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-suifu-primary">メニューを見る</a>
+            <a href="#menu" className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-suifu-primary">{copy.primaryCta}</a>
             <a href={copy.mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-suifu-primary px-5 text-sm font-black text-white">
-              <Navigation className="h-4 w-4" /> 地図で行く
+              <Navigation className="h-4 w-4" /> {copy.mapCta}
             </a>
             <a href={`tel:${copy.phone}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-suifu-accent px-5 text-sm font-black text-white">
-              <Phone className="h-4 w-4" /> 電話する
+              <Phone className="h-4 w-4" /> {copy.phoneCta}
             </a>
           </div>
         </div>
@@ -1387,17 +1433,174 @@ function OwnerDemoPage({ siteData, setSiteData, dataStatus, setDataStatus }) {
         </aside>
         <main className="grid gap-5">
           <AdminTopBar dataStatus={dataStatus} dirty={dirty} onSave={handleSave} onReset={handleReset} />
-          <Dashboard data={data} dataStatus={dataStatus} />
-          <StatusEditor data={data} update={update} />
-          <LimitedMenuEditor data={data} update={update} />
-          <CrowdEditor data={data} update={update} />
-          <NewsEditor data={data} update={update} />
-          <LinePreview data={data} update={update} />
+          <AdminOverview data={data} dataStatus={dataStatus} />
+          <BasicInfoEditor data={data} update={update} />
+          <BusinessHoursEditor data={data} update={update} />
+          <MenuItemsEditor data={data} update={update} />
+          <ConceptContentEditor data={data} update={update} />
+          <MovieContentEditor data={data} update={update} />
+          <GalleryContentEditor data={data} update={update} />
+          <AccessContentEditor data={data} update={update} />
+          <CtaContentEditor data={data} update={update} />
           <ImageSwapManager data={data} update={update} />
-          <AccessEditor data={data} update={update} />
         </main>
       </div>
     </div>
+  );
+}
+
+function setContentField(current, key, value) {
+  return { ...current, content: { ...(current.content || {}), [key]: value } };
+}
+
+function AdminOverview({ data, dataStatus }) {
+  const copy = publicCopy(data);
+  const cards = [
+    ["保存先", dataStatus.source === "supabase" ? "クラウド保存中" : "ローカル保存中", Store],
+    ["店名", copy.brandName, Store],
+    ["営業時間", copy.hours, Clock3],
+    ["メニュー数", `${menuItemsFor(data).length}品`, Soup],
+    ["電話番号", copy.phone, Phone],
+    ["公開状態", dataStatus.error ? "要確認" : "公開中", Bell]
+  ];
+  return (
+    <AdminSection id="overview" title="公開状態" subtitle="保存先、公開ページに出る主要情報、最終確認の入口です。">
+      <div className="grid gap-3 md:grid-cols-3">
+        {cards.map(([label, value, Icon]) => (
+          <div key={label} className="rounded-2xl border border-suifu-primary/10 bg-suifu-paper p-4">
+            <Icon className="h-5 w-5 text-suifu-primary" />
+            <p className="mt-3 text-xs font-black text-suifu-muted">{label}</p>
+            <strong className="mt-1 block font-serif text-xl leading-tight">{value}</strong>
+          </div>
+        ))}
+      </div>
+      <a href="/" target="_blank" rel="noreferrer" className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full bg-suifu-primary px-5 text-sm font-black text-white">
+        公開ページを別タブで確認
+      </a>
+    </AdminSection>
+  );
+}
+
+function BasicInfoEditor({ data, update }) {
+  const copy = publicCopy(data);
+  return (
+    <AdminSection id="basic" title="基本情報" subtitle="ファーストビューに表示される店名、キャッチコピー、説明文を編集します。">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="店名" value={copy.brandName} placeholder="らぁ麺 翠風" onChange={(value) => update((current) => ({ ...current, brand: { ...current.brand, name: value, shortName: value.replace("らぁ麺 ", "") } }))} />
+        <Field label="ふりがな" value={copy.kana} placeholder="らぁめん すいふう" onChange={(value) => update((current) => ({ ...current, brand: { ...current.brand, kana: value } }))} />
+        <Textarea label="キャッチコピー" help="改行したい位置でEnterを入れてください。" value={copy.heroTitle} placeholder={"淡麗塩、\n竹影に香る一杯。"} onChange={(value) => update((current) => setContentField(current, "heroTitle", value))} className="md:col-span-2" />
+        <Textarea label="説明文" value={copy.heroSubtitle} placeholder="透き通るスープに、鶏の旨みと柚子の香りを重ねて。" onChange={(value) => update((current) => setContentField(current, "heroSubtitle", value))} className="md:col-span-2" />
+        <Field label="価格帯" value={copy.priceRange} placeholder="¥980-¥1,500" onChange={(value) => update((current) => setContentField(current, "priceRange", value))} />
+        <Field label="評価表示" value={copy.rating} placeholder="★4.7" onChange={(value) => update((current) => setContentField(current, "rating", value))} />
+      </div>
+    </AdminSection>
+  );
+}
+
+function BusinessHoursEditor({ data, update }) {
+  const copy = publicCopy(data);
+  return (
+    <AdminSection id="hours" title="営業時間" subtitle="営業時間、ラストオーダー、定休日を編集します。">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Select label="営業状態" value={copy.status} options={["営業中", "準備中", "本日定休日", "売り切れ終了"]} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, state: value } }))} />
+        <Field label="開店時間" value={copy.open} placeholder="11:00" onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, open: value }, access: { ...current.access, hours: `${value}-${current.shopStatus?.close || "22:00"} (L.O.${current.shopStatus?.lastOrder || "21:30"})` } }))} />
+        <Field label="ラストオーダー" value={copy.lastOrder} placeholder="21:30" onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, lastOrder: value }, access: { ...current.access, hours: `${current.shopStatus?.open || "11:00"}-${current.shopStatus?.close || "22:00"} (L.O.${value})` } }))} />
+        <Field label="閉店時間" value={copy.close} placeholder="22:00" onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, close: value }, access: { ...current.access, hours: `${current.shopStatus?.open || "11:00"}-${value} (L.O.${current.shopStatus?.lastOrder || "21:30"})` } }))} />
+        <Field label="定休日" value={copy.closed} placeholder="火曜日" onChange={(value) => update((current) => setContentField(current, "closedDays", value))} />
+        <Textarea label="営業メモ" value={cleanText(data.shopStatus?.note, "限定麺は売り切れ次第終了です。")} onChange={(value) => update((current) => ({ ...current, shopStatus: { ...current.shopStatus, note: value } }))} className="md:col-span-3" />
+      </div>
+    </AdminSection>
+  );
+}
+
+function MenuItemsEditor({ data, update }) {
+  const items = menuItemsFor(data);
+  function patchItem(index, patch) {
+    update((current) => {
+      const base = menuItemsFor(current);
+      const menuItems = base.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item);
+      return { ...current, menuItems };
+    });
+  }
+  return (
+    <AdminSection id="menu-edit" title="メニュー" subtitle="公開LPの看板メニューカードに反映されます。おすすめにすると黄色ラベルが出ます。">
+      <div className="grid gap-4">
+        {items.map((item, index) => (
+          <div key={`${item.name}-${index}`} className="grid gap-3 rounded-2xl border border-suifu-primary/10 bg-suifu-paper p-4 md:grid-cols-[1.1fr_0.7fr_2fr_120px]">
+            <Field label="メニュー名" value={item.name} placeholder="淡麗塩らぁ麺" onChange={(value) => patchItem(index, { name: value })} />
+            <Field label="価格" value={item.price} placeholder="980円" onChange={(value) => patchItem(index, { price: value })} />
+            <Field label="説明" value={item.text} placeholder="商品の魅力が伝わる短い説明" onChange={(value) => patchItem(index, { text: value })} />
+            <label className="flex items-center gap-2 rounded-2xl bg-white/70 px-4 py-3 text-sm font-black text-suifu-primary">
+              <input type="checkbox" checked={item.recommended} onChange={(event) => patchItem(index, { recommended: event.target.checked })} />
+              おすすめ
+            </label>
+          </div>
+        ))}
+      </div>
+    </AdminSection>
+  );
+}
+
+function ConceptContentEditor({ data, update }) {
+  const copy = publicCopy(data);
+  return (
+    <AdminSection id="concept-edit" title="こだわり" subtitle="店の思想やスープの説明を短く上品に編集します。">
+      <div className="grid gap-4">
+        <Field label="見出し" value={copy.conceptTitle} placeholder="澄みきった一杯を、毎日の食事に。" onChange={(value) => update((current) => setContentField(current, "conceptTitle", value))} />
+        <Textarea label="本文" value={copy.conceptText} placeholder="スープ、麺、素材へのこだわり" onChange={(value) => update((current) => setContentField(current, "conceptText", value))} />
+      </div>
+    </AdminSection>
+  );
+}
+
+function MovieContentEditor({ data, update }) {
+  const copy = publicCopy(data);
+  return (
+    <AdminSection id="movie-edit" title="CM映像" subtitle="動画セクションの見出しと説明を編集します。映像素材自体は現在のCMを使用します。">
+      <div className="grid gap-4">
+        <Field label="CM見出し" value={copy.movieTitle} placeholder="店舗の魅力を15秒に凝縮。" onChange={(value) => update((current) => setContentField(current, "movieTitle", value))} />
+        <Textarea label="CM説明" value={copy.movieText} placeholder="湯気、照り、店内の温度感など" onChange={(value) => update((current) => setContentField(current, "movieText", value))} />
+      </div>
+    </AdminSection>
+  );
+}
+
+function GalleryContentEditor({ data, update }) {
+  const copy = publicCopy(data);
+  return (
+    <AdminSection id="gallery-edit" title="店内紹介" subtitle="店内写真セクションの見出しを編集します。写真は画像差し替えで変更できます。">
+      <Field label="店内紹介の見出し" value={copy.galleryTitle} placeholder="店内・空間紹介" onChange={(value) => update((current) => setContentField(current, "galleryTitle", value))} />
+    </AdminSection>
+  );
+}
+
+function AccessContentEditor({ data, update }) {
+  const copy = publicCopy(data);
+  return (
+    <AdminSection id="access-edit" title="アクセス" subtitle="住所、最寄駅、電話番号、地図リンクを編集します。公開LPの店舗情報にも反映されます。">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="住所" value={copy.address} placeholder="大阪市福島区福島2丁目 周辺" onChange={(value) => update((current) => ({ ...current, access: { ...current.access, address: value } }))} />
+        <Field label="最寄駅" value={copy.station} placeholder="JR新福島駅 徒歩3分" onChange={(value) => update((current) => ({ ...current, access: { ...current.access, station: value } }))} />
+        <Field label="電話番号" value={copy.phone} placeholder="06-0000-0000" onChange={(value) => update((current) => ({ ...current, access: { ...current.access, phone: value } }))} />
+        <Field label="GoogleマップURL" value={copy.mapUrl} placeholder="https://www.google.com/maps/..." onChange={(value) => update((current) => ({ ...current, access: { ...current.access, mapUrl: value } }))} />
+        <Textarea label="目印・補足" value={copy.landmark} placeholder="木の看板と深い紺の暖簾が目印です。" onChange={(value) => update((current) => ({ ...current, access: { ...current.access, landmark: value } }))} className="md:col-span-2" />
+      </div>
+    </AdminSection>
+  );
+}
+
+function CtaContentEditor({ data, update }) {
+  const copy = publicCopy(data);
+  return (
+    <AdminSection id="cta-edit" title="CTA" subtitle="ボタン文言と最終CTAのコピーを編集します。">
+      <div className="grid gap-4 md:grid-cols-3">
+        <Field label="主ボタン" value={copy.primaryCta} placeholder="メニューを見る" onChange={(value) => update((current) => setContentField(current, "primaryCta", value))} />
+        <Field label="地図ボタン" value={copy.mapCta} placeholder="Googleマップで行く" onChange={(value) => update((current) => setContentField(current, "mapCta", value))} />
+        <Field label="電話ボタン" value={copy.phoneCta} placeholder="電話する" onChange={(value) => update((current) => setContentField(current, "phoneCta", value))} />
+        <Field label="最終CTA見出し" value={copy.finalTitle} placeholder="今日の一杯を、迷わず食べに行ける。" onChange={(value) => update((current) => setContentField(current, "finalTitle", value))} className="md:col-span-3" />
+        <Textarea label="最終CTA本文" value={copy.finalText} placeholder="来店前に必要な情報をひとつに。" onChange={(value) => update((current) => setContentField(current, "finalText", value))} className="md:col-span-3" />
+      </div>
+    </AdminSection>
   );
 }
 
@@ -1602,20 +1805,22 @@ function AdminSection({ id, title, subtitle, children }) {
   );
 }
 
-function Field({ label, value, onChange, type = "text", className = "" }) {
+function Field({ label, value, onChange, type = "text", className = "", placeholder = "", help = "" }) {
   return (
     <label className={`block text-sm font-black ${className}`}>
       <span className="mb-1 block text-suifu-muted">{label}</span>
-      <input type={type} value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="w-full rounded-2xl border border-suifu-primary/15 bg-white px-4 py-3 font-bold outline-none focus:border-suifu-primary" />
+      <input type={type} value={value ?? ""} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="w-full rounded-2xl border border-suifu-primary/15 bg-white px-4 py-3 font-bold outline-none focus:border-suifu-primary" />
+      {help && <span className="mt-1 block text-xs font-bold text-suifu-muted">{help}</span>}
     </label>
   );
 }
 
-function Textarea({ label, value, onChange, className = "" }) {
+function Textarea({ label, value, onChange, className = "", placeholder = "", help = "" }) {
   return (
     <label className={`block text-sm font-black ${className}`}>
       <span className="mb-1 block text-suifu-muted">{label}</span>
-      <textarea value={value ?? ""} onChange={(event) => onChange(event.target.value)} rows={4} className="w-full rounded-2xl border border-suifu-primary/15 bg-white px-4 py-3 font-bold outline-none focus:border-suifu-primary" />
+      <textarea value={value ?? ""} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} rows={4} className="w-full rounded-2xl border border-suifu-primary/15 bg-white px-4 py-3 font-bold outline-none focus:border-suifu-primary" />
+      {help && <span className="mt-1 block text-xs font-bold text-suifu-muted">{help}</span>}
     </label>
   );
 }

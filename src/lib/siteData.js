@@ -23,8 +23,7 @@ function hasCorruptText(value) {
 export function mergeSiteData(base, saved) {
   if (!saved || typeof saved !== "object") return clone(base);
   if (hasCorruptText(saved)) {
-    console.warn("siteData contains mojibake; fallback data will be used.");
-    return clone(base);
+    console.warn("siteData contains mojibake; readable fields and new CMS fields will still be merged.");
   }
 
   const baseData = clone(base);
@@ -165,7 +164,7 @@ export const dataProvider = {
     if (!isSupabaseConfigured) {
       const error = new Error("Supabase環境変数未設定");
       console.error("Supabase load skipped:", error.message);
-      return { data: clone(defaultSiteData), source: "fallback", error, configMissing: true };
+      return { data: localStorageProvider.load(), source: "localStorage", error, configMissing: true };
     }
 
     try {
